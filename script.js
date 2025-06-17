@@ -1,20 +1,35 @@
 // FILE: script.js
 
+// --- Firebase Firestore Imports ---
+// These specific Firestore functions are needed for database operations.
+import { collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
 // --- 1. Game State Variables ---
+// These variables will hold the current state of our game.
 let currentSeedWord = "";
 let currentTargetWord = "";
-let currentChain = [];
+let currentChain = []; // Stores the words the player has entered
 let currentDifficulty = "N/A";
-let optimalPathLength = 0;
-let targetTransitionsForScoring = 0;
-let powerUpCounts = { hint: 0, swap: 0, skip: 0 };
-let powerUpsUsedThisGame = { hint: 0, swap: 0, skip: 0 };
-let currentScore = 0;
-let gameTimer = 0;
-let timerInterval = null;
-let gameInProgress = false;
+let optimalPathLength = 0; // Will be set by initializeGame
+let targetTransitionsForScoring = 0; // Will be set by initializeGame
+let powerUpCounts = { // Tracks AVAILABLE power-ups (reset on new game)
+    hint: 0,
+    swap: 0,
+    skip: 0
+};
+let powerUpsUsedThisGame = { // Tracks power-ups *ACTUALLY USED* in the current game (reset on new game)
+    hint: 0,
+    swap: 0,
+    skip: 0
+};
+let currentScore = 0; // The player's score for the current game
+let gameTimer = 0; // In seconds
+let timerInterval = null; // To store the timer's interval ID
+let gameInProgress = false; // Flag to prevent multiple game starts or actions after game ends
 
 // --- 2. Game Elements (Get References from HTML) ---
+// These constants get references to our HTML elements by their IDs.
+// They are accessed after the DOM is loaded, so they are guaranteed to exist.
 const seedWordDisplay = document.getElementById('seed-word-display');
 const targetWordDisplay = document.getElementById('target-word-display');
 const difficultyDisplay = document.getElementById('difficulty-display');
@@ -29,22 +44,24 @@ const skipCountDisplay = document.getElementById('skip-count');
 const hintBtn = document.getElementById('hint-btn');
 const swapBtn = document.getElementById('swap-btn');
 const skipBtn = document.getElementById('skip-btn');
-const leaderboardList = document.getElementById('leaderboard-list');
+const leaderboardList = document.getElementById('leaderboard-list'); // For later leaderboard display
 
 // --- 3. Game Dictionary (Crucial for Word Validation) ---
+// This is a comprehensive list of common 3- and 4-letter English words.
+// For the final game, this would be generated/curated by AI and potentially stored externally.
 const dictionary = [
-    "READ", "HEAD", "HELD", "HOLD", "HOLE", "ROLE", "ROSE",
-    "WAVE", "DAVE", "DIVE", "WANE", "WINE", "DINE",
-    "CAT", "COT", "COG", "DOG",
-    "MAKE", "TAKE",
-    "COLD", "CORD", "WORD", "WORM", "WARM",
-    "PINE", "PANE", "SANE", "SALE", "SALT",
-    "LIME", "LIMP", "SIMP", "SUMP", "PUMP", "POMP", "POOP", "COOP", "COUP", "SOUP",
-    "BALE", "BALD", "BOLD", "COLD",
-    "FLAME", "BLAME", "BLASE", "BLAST",
-    "GAME", "DAME", "DOME", "HOME",
-    "STAY", "SLAY", "PLAY",
-    "FLAM",
+    "READ", "HEAD", "HELD", "HOLD", "HOLE", "ROLE", "ROSE", // For testing READ-ROSE
+    "WAVE", "DAVE", "DIVE", "WANE", "WINE", "DINE",           // For testing WAVE-DIVE
+    "CAT", "COT", "COG", "DOG",                               // For testing CAT-DOG
+    "MAKE", "TAKE",                                           // For testing MAKE-TAKE
+    "COLD", "CORD", "WORD", "WORM", "WARM",                   // For testing COLD-WARM
+    "PINE", "PANE", "SANE", "SALE", "SALT",                   // For testing PINE-SALT
+    "LIME", "LIMP", "SIMP", "SUMP", "PUMP", "POMP", "POOP", "COOP", "COUP", "SOUP", // For testing LIME-SOUP
+    "BALE", "BALD", "BOLD", "COLD",                           // For testing BALE-COLD
+    "FLAME", "BLAME", "BLASE", "BLAST",                       // For testing FLAME-BLAST
+    "GAME", "DAME", "DOME", "HOME",                           // For testing GAME-HOME
+    "STAY", "SLAY", "PLAY",                                   // For testing STAY-PLAY
+    "FLAM",                                                   // For testing FLAM
     "AHEM", "ABLE", "ACID", "AIDE", "AIL", "AIM", "AIR", "ALAS", "ALGA", "ALL", "ALLY", "ALOE", "ALSO", "ALT", "AMEN", "AMI", "AMID", "AMMO", "AMOK", "AMP", "AND", "ANEW", "ANTI", "ANTS", "APE", "APEX", "APES", "APPS", "ARCH", "ARE", "ARID", "ARMS", "ARMY", "ARTS", "ASH", "ASIA", "ASK", "AUNT", "AURA", "AUTO", "AVE", "AWAY", "AWE", "AXE", "AXIS", "AXLE",
     "BACK", "BAD", "BAG", "BAIL", "BAIT", "BAKE", "BALD", "BALE", "BALL", "BALM", "BAND", "BANE", "BANG", "BANK", "BAR", "BARD", "BARE", "BARK", "BARN", "BASE", "BASH", "BAT", "BATH", "BATS", "BEAD", "BEAK", "BEAM", "BEAN", "BEAR", "BEAT", "BED", "BEEF", "BEEN", "BEER", "BELL", "BELT", "BEND", "BENT", "BEST", "BETA", "BIAS", "BIB", "BID", "BIG", "BIKE", "BILD", "BILL", "BIND", "BIRD", "BITE", "BITS", "BLAB", "BLACK", "BLAH", "BLAME", "BLAND", "BLARE", "BLASE", "BLAST", "BLEB", "BLESS", "BLIP", "BLOB", "BLOC", "BLOG", "BLON", "BLOT", "BLOW", "BLUE", "BLUM", "BLUR", "BOAR", "BOAT", "BODE", "BOG", "BOGY", "BOLD", "BOLE", "BOMB", "BONA", "BOND", "BONE", "BONK", "BOOK", "BOOM", "BOON", "BOOR", "BOOT", "BORD", "BORE", "BORN", "BOSS", "BOTH", "BOWL", "BOWS", "BOX", "BOY", "BRAD", "BRAG", "BRAID", "BRAIN", "BRAKE", "BRAN", "BRASS", "BRAT", "BRAVE", "BRAWL", "BRAY", "BRED", "BREW", "BRIEF", "BRIM", "BRIN", "BRIN", "BRIT", "BROD", "BROG", "BROK", "BROM", "BRON", "BROO", "BROW", "BUCK", "BUD", "BUFF", "BULB", "BULK", "BULL", "BUMP", "BUN", "BUNG", "BUNK", "BUNT", "BURG", "BURN", "BURP", "BURR", "BUSH", "BUSY", "BUT", "BUTT", "BUYS", "BUZZ",
     "CAB", "CAGE", "CAKE", "CALL", "CALM", "CAM", "CAME", "CAMP", "CAN", "CANE", "CANS", "CAPE", "CAR", "CARD", "CARE", "CARP", "CARS", "CART", "CASE", "CASH", "CAST", "CAT", "CAVE", "CEIL", "CELL", "CENT", "CHAP", "CHAR", "CHAT", "CHEF", "CHIC", "CHIN", "CHIP", "CHIT", "CHOIR", "CHOM", "CHOP", "CHOW", "CHUM", "CHUR", "CITE", "CITY", "CLAD", "CLAG", "CLAM", "CLAN", "CLAP", "CLAW", "CLAY", "CLIP", "CLOG", "CLON", "CLOT", "CLOU", "CLOW", "CLUB", "CLUE", "COAL", "COAT", "COAX", "COB", "COCK", "COD", "CODE", "COGN", "COIL", "COIN", "COKE", "COLD", "COLT", "COME", "COMP", "CON", "CONE", "CONK", "COOL", "COOP", "COP", "COPE", "COPS", "CORD", "CORE", "CORN", "CORS", "COST", "COT", "COUP", "COVE", "COWL", "COZY", "CRAB", "CRAD", "CRAG", "CRAM", "CRAN", "CRAP", "CRAS", "CRAW", "CRAY", "CRED", "CREM", "CREP", "CREW", "CRIA", "CRIM", "CRIN", "CRIP", "CROC", "CROP", "CROW", "CRUD", "CRUM", "CRUP", "CRUX", "CUB", "CUBE", "CUFF", "CULL", "CUP", "CURB", "CURD", "CURE", "CURL", "CURT", "CUSH", "CUSP", "CUT", "CUTE", "CYCL",
@@ -57,21 +74,22 @@ const dictionary = [
     "JAB", "JACK", "JAG", "JAIL", "JAM", "JAMS", "JAR", "JAW", "JAZZ", "JEAN", "JEER", "JELL", "JESU", "JET", "JIB", "JILT", "JIM", "JING", "JINX", "JOB", "JOCK", "JOEY", "JOG", "JOIN", "JOINT", "JOKE", "JOLT", "JOSH", "JOT", "JOWL", "JOY", "JUAN", "JUDO", "JUG", "JUMP", "JUNK", "JUST", "JUTE",
     "KEEL", "KEEN", "KEEP", "KELP", "KEN", "KENT", "KEPT", "KERN", "KEY", "KICK", "KID", "KILL", "KILO", "KILT", "KIN", "KIND", "KING", "KINK", "KINO", "KIP", "KIPS", "KISS", "KIT", "KITE", "KITS", "KNAP", "KNEE", "KNEW", "KNIT", "KNOB", "KNOC", "KNOW", "KNUB", "KNOX", "KOLA", "KONG", "KOOK", "KUDO", "KUDU", "KURL",
     "LAB", "LACE", "LACK", "LAD", "LADE", "LAG", "LAID", "LAIN", "LAIR", "LAKE", "LAMA", "LAMB", "LAME", "LAMP", "LAND", "LANE", "LANG", "LANK", "LARD", "LARGE", "LASH", "LAST", "LATE", "LATH", "LAVA", "LAVE", "LAW", "LAWN", "LAWS", "LAZY", "LEAD", "LEAF", "LEAK", "LEAN", "LEAP", "LEAR", "LEASE", "LEAST", "LEAVE", "LED", "LEE", "LEFT", "LEG", "LEND", "LENS", "LENT", "LESS", "LET", "LETS", "LEVY", "LIAR", "LICE", "LICK", "LID", "LIE", "LIEN", "LIFE", "LIFT", "LIKE", "LILL", "LILT", "LIME", "LIMP", "LINE", "LINK", "LINT", "LION", "LIRA", "LIRE", "LIST", "LIVE", "LOAD", "LOAF", "LOAM", "LOAN", "LOAT", "LOB", "LOBE", "LOCA", "LOCK", "LOCO", "LOD", "LODE", "LOFT", "LOG", "LOGO", "LOIN", "LOLL", "LONG", "LOOK", "LOOM", "LOON", "LOOP", "LOOS", "LOOT", "LOPE", "LORD", "LORE", "LOSE", "LOSS", "LOST", "LOT", "LOUD", "LOVE", "LOW", "LUBE", "LUCK", "LUDO", "LUGE", "LUG", "LULL", "LUMP", "LUN", "LUNG", "LURE", "LURK", "LUSH", "LUST", "LUT", "LUXE", "LYNX", "LYRE",
-        "MAAM", "MACE", "MACH", "MAD", "MADE", "MAGE", "MAGN", "MAID", "MAIL", "MAIN", "MAKE", "MALE", "MALI", "MALL", "MALT", "MAM", "MAN", "MANE", "MANY", "MAP", "MAR", "MARC", "MARE", "MARK", "MARL", "MARS", "MART", "MASH", "MASK", "MASS", "MAST", "MAT", "MATE", "MATH", "MAUL", "MAY", "MAYB", "MAZE", "MEAD", "MEAL", "MEAN", "MEAT", "MEET", "MELT", "MEMO", "MEN", "MEND", "MENT", "MENU", "MER", "MERE", "MESH", "MESS", "MET", "METAL", "METE", "MEW", "MICE", "MID", "MIKE", "MILD", "MILE", "MILK", "MILL", "MIM", "MIME", "MIMP", "MIN", "MIND", "MINE", "MING", "MINK", "MINT", "MINX", "MIRA", "MIRE", "MIRK", "MIRR", "MIST", "MIT", "MITE", "MIX", "MOAN", "MOAT", "MOCK", "MODE", "MOG", "MOLD", "MOLE", "MOLL", "MOLT", "MOM", "MOMS", "MONK", "MONO", "MOOD", "MOON", "MOOR", "MOOS", "MOOT", "MOP", "MOPE", "MOR", "MORE", "MORN", "MORT", "MOSS", "MOST", "MOTH", "MOVE", "MOW", "MUCH", "MUCK", "MUFF", "MUG", "MULL", "MUMP", "MUMY", "MUNI", "MURAL", "MUS", "MUSE", "MUST", "MUTT", "MUZZ", "MYRR", "MYTH",
-        "NAB", "NAG", "NAIL", "NAME", "NAN", "NAP", "NAPE", "NAPS", "NASH", "NAST", "NAT", "NAVE", "NAVY", "NEAR", "NEAT", "NECK", "NEED", "NEEM", "NEIL", "NELL", "NEON", "NEP", "NERD", "NEST", "NET", "NEW", "NEWS", "NEXT", "NICE", "NICK", "NIGH", "NIL", "NIM", "NIMB", "NIML", "NINE", "NIP", "NIPS", "NIT", "NITS", "NOB", "NODE", "NOEL", "NOG", "NOIL", "NOIS", "NOM", "NONE", "NOOK", "NOON", "NOR", "NORM", "NOSE", "NOT", "NOTE", "NOUT", "NOV", "NOW", "NUDE", "NUG", "NULL", "NUMB", "NUN", "NUNC", "NURT", "NUT",
-        "OAF", "OAK", "OAR", "OATH", "OBEY", "ODD", "ODE", "OF", "OFF", "OH", "OIL", "OK", "OLD", "ON", "ONCE", "ONE", "ONES", "ONLY", "ONTO", "OOH", "OOL", "OOM", "OON", "OOP", "OOPS", "OOR", "OOS", "OOT", "OOZE", "OPEN", "OPT", "OR", "ORAL", "ORE", "ORIG", "ORT", "OS", "OTHER", "OUCH", "OUR", "OUT", "OVAL", "OVEN", "OVER", "OWED", "OWEN", "OWN", "OXEN", "OXY",
-        "PACE", "PACK", "PAD", "PAGE", "PAID", "PAIL", "PAIN", "PAIR", "PAL", "PALE", "PALM", "PAN", "PANE", "PANS", "PANT", "PAR", "PARA", "PARD", "PARE", "PARK", "PART", "PASS", "PAST", "PAT", "PATH", "PATS", "PAVE", "PAWN", "PAY", "PEAK", "PEAL", "PEAN", "PEAR", "PEAT", "PECK", "PEEK", "PEEL", "PEEP", "PEER", "PEG", "PELL", "PEN", "PEND", "PENN", "PENS", "PENT", "PER", "PERT", "PEST", "PET", "PHEW", "PIAN", "PICK", "PIED", "PIER", "PIG", "PILE", "PILL", "PIN", "PINE", "PING", "PINK", "PINT", "PION", "PIP", "PIPE", "PIPS", "PIRN", "PISS", "PIT", "PITH", "PITS", "PITY", "PLAN", "PLAY", "PLEA", "PLEB", "PLED", "PLEN", "PLEW", "PLIE", "PLOD", "PLON", "PLOT", "PLOW", "PLOY", "PLUG", "PLUM", "PLUS", "POCK", "POD", "POEM", "POET", "POGO", "POIL", "POIN", "POKE", "POL", "POLE", "POLL", "POMP", "POND", "PONE", "PONS", "PONY", "POO", "POOH", "POOL", "POOP", "POOR", "POP", "POPS", "PORE", "PORK", "PORT", "POSE", "POSH", "POST", "POT", "POUR", "POUT", "POWL", "POWS", "PRAY", "PREP", "PREY", "PRIG", "PRIM", "PRIN", "PRIS", "PRIV", "PRO", "PROB", "PROM", "PROP", "PROW", "PUCK", "PUFF", "PULL", "PULP", "PULS", "PUMP", "PUN", "PUNK", "PUNT", "PURE", "PURL", "PURP", "PURR", "PUSH", "PUT", "PUTT", "PUZZ",
+    "MAAM", "MACE", "MACH", "MAD", "MADE", "MAGE", "MAGN", "MAID", "MAIL", "MAIN", "MAKE", "MALE", "MALI", "MALL", "MALT", "MAM", "MAN", "MANE", "MANY", "MAP", "MAR", "MARC", "MARE", "MARK", "MARL", "MARS", "MART", "MASH", "MASK", "MASS", "MAST", "MAT", "MATE", "MATH", "MAUL", "MAY", "MAYB", "MAZE", "MEAD", "MEAL", "MEAN", "MEAT", "MEET", "MELT", "MEMO", "MEN", "MEND", "MENT", "MENU", "MER", "MERE", "MESH", "MESS", "MET", "METAL", "METE", "MEW", "MICE", "MID", "MIKE", "MILD", "MILE", "MILK", "MILL", "MIM", "MIME", "MIMP", "MIN", "MIND", "MINE", "MING", "MINK", "MINT", "MINX", "MIRA", "MIRE", "MIRK", "MIRR", "MIST", "MIT", "MITE", "MIX", "MOAN", "MOAT", "MOCK", "MODE", "MOG", "MOLD", "MOLE", "MOLL", "MOLT", "MOM", "MOMS", "MONK", "MONO", "MOOD", "MOON", "MOOR", "MOOS", "MOOT", "MOP", "MOPE", "MOR", "MORE", "MORN", "MORT", "MOSS", "MOST", "MOTH", "MOVE", "MOW", "MUCH", "MUCK", "MUFF", "MUG", "MULL", "MUMP", "MUMY", "MUNI", "MURAL", "MUS", "MUSE", "MUST", "MUTT", "MUZZ", "MYRR", "MYTH",
+    "NAB", "NAG", "NAIL", "NAME", "NAN", "NAP", "NAPE", "NAPS", "NASH", "NAST", "NAT", "NAVE", "NAVY", "NEAR", "NEAT", "NECK", "NEED", "NEEM", "NEIL", "NELL", "NEON", "NEP", "NERD", "NEST", "NET", "NEW", "NEWS", "NEXT", "NICE", "NICK", "NIGH", "NIL", "NIM", "NIMB", "NIML", "NINE", "NIP", "NIPS", "NIT", "NITS", "NOB", "NODE", "NOEL", "NOG", "NOIL", "NOIS", "NOM", "NONE", "NOOK", "NOON", "NOR", "NORM", "NOSE", "NOT", "NOTE", "NOUT", "NOV", "NOW", "NUDE", "NUG", "NULL", "NUMB", "NUN", "NUNC", "NURT", "NUT",
+    "OAF", "OAK", "OAR", "OATH", "OBEY", "ODD", "ODE", "OF", "OFF", "OH", "OIL", "OK", "OLD", "ON", "ONCE", "ONE", "ONES", "ONLY", "ONTO", "OOH", "OOL", "OOM", "OON", "OOP", "OOPS", "OOR", "OOS", "OOT", "OOZE", "OPEN", "OPT", "OR", "ORAL", "ORE", "ORIG", "ORT", "OS", "OTHER", "OUCH", "OUR", "OUT", "OVAL", "OVEN", "OVER", "OWED", "OWEN", "OWN", "OXEN", "OXY",
+    "PACE", "PACK", "PAD", "PAGE", "PAID", "PAIL", "PAIN", "PAIR", "PAL", "PALE", "PALM", "PAN", "PANE", "PANS", "PANT", "PAR", "PARA", "PARD", "PARE", "PARK", "PART", "PASS", "PAST", "PAT", "PATH", "PATS", "PAVE", "PAWN", "PAY", "PEAK", "PEAL", "PEAN", "PEAR", "PEAT", "PECK", "PEEK", "PEEL", "PEEP", "PEER", "PEG", "PELL", "PEN", "PEND", "PENN", "PENS", "PENT", "PER", "PERT", "PEST", "PET", "PHEW", "PIAN", "PICK", "PIED", "PIER", "PIG", "PILE", "PILL", "PIN", "PINE", "PING", "PINK", "PINT", "PION", "PIP", "PIPE", "PIPS", "PIRN", "PISS", "PIT", "PITH", "PITS", "PITY", "PLAN", "PLAY", "PLEA", "PLEB", "PLED", "PLEN", "PLEW", "PLIE", "PLOD", "PLON", "PLOT", "PLOW", "PLOY", "PLUG", "PLUM", "PLUS", "POCK", "POD", "POEM", "POET", "POGO", "POIL", "POIN", "POKE", "POL", "POLE", "POLL", "POMP", "POND", "PONE", "PONS", "PONY", "POO", "POOH", "POOL", "POOP", "POOR", "POP", "POPS", "PORE", "PORK", "PORT", "POSE", "POSH", "POST", "POT", "POUR", "POUT", "POWL", "POWS", "PRAY", "PREP", "PREY", "PRIG", "PRIM", "PRIN", "PRIS", "PRIV", "PRO", "PROB", "PROM", "PROP", "PROW", "PUCK", "PUFF", "PULL", "PULP", "PULS", "PUMP", "PUN", "PUNK", "PUNT", "PURE", "PURL", "PURP", "PURR", "PUSH", "PUT", "PUTT", "PUZZ",
         "QUAD", "QUAI", "QUAY", "QUE", "QUER", "QUI", "QUID", "QUIP", "QUIT", "QUIZ",
         "RACE", "RACK", "RAD", "RADE", "RAGE", "RAGS", "RAID", "RAIL", "RAIN", "RAIS", "RAKE", "RAM", "RAMP", "RAN", "RANC", "RAND", "RANG", "RANK", "RANT", "RAP", "RAPS", "RARE", "RASH", "RATE", "RATS", "RAVE", "RAW", "RAZE", "READ", "REAL", "REAM", "REAP", "REAR", "REB", "RED", "REED", "REEF", "REEL", "REFS", "REFT", "REIN", "RELY", "REM", "REND", "RENE", "RENT", "REP", "REST", "RET", "REV", "REVS", "REW", "RHEA", "RHYM", "RIBS", "RICE", "RICH", "RICK", "RID", "RIDE", "RIFE", "RIFT", "RIG", "RILL", "RIM", "RIND", "RING", "RINK", "RIOT", "RIP", "RIPE", "RIPS", "RISE", "RISK", "RITE", "ROAM", "ROAR", "ROBE", "ROB", "ROCK", "ROD", "RODE", "ROG", "ROIL", "ROLE", "ROLL", "ROMA", "ROME", "ROMP", "RONE", "ROOF", "ROOK", "ROOM", "ROOT", "ROPE", "ROPY", "ROSE", "ROSY", "ROT", "ROTE", "ROUG", "ROUP", "ROUT", "ROW", "RUB", "RUBE", "RUBY", "RUCK", "RUDD", "RUDE", "RUFF", "RUG", "RUIN", "RULE", "RUM", "RUMP", "RUN", "RUNG", "RUNS", "RUNT", "RUR", "RUSH", "RUSK", "RUST", "RUT",
         "SACK", "SAD", "SAFE", "SAGA", "SAGE", "SAID", "SAIL", "SAIN", "SAINT", "SAKE", "SALE", "SALI", "SALT", "SAME", "SAND", "SANE", "SANG", "SANK", "SASH", "SAT", "SATE", "SAVE", "SAW", "SAWS", "SAX", "SAY", "SCAB", "SCAD", "SCAG", "SCAL", "SCAM", "SCAN", "SCAR", "SCAT", "SCOP", "SCOR", "SCOT", "SCOW", "SCRAG", "SCRAM", "SCRAP", "SCRAT", "SCREW", "SCROD", "SCUM", "SEA", "SEAL", "SEAM", "SEAN", "SEAR", "SEAT", "SEC", "SECT", "SEE", "SEED", "SEEK", "SEEM", "SEEN", "SEEP", "SEER", "SELL", "SEND", "SENS", "SENT", "SEPT", "SET", "SETS", "SEW", "SEX", "SHAD", "SHAG", "SHAK", "SHAL", "SHAM", "SHAN", "SHAP", "SHAR", "SHOT", "SHOW", "SHUT", "SICK", "SIDE", "SIFT", "SIGH", "SIGN", "SILK", "SILL", "SIM", "SIMP", "SIN", "SING", "SINK", "SINS", "SIP", "SIPS", "SIR", "SIRE", "SIRS", "SITE", "SIT", "SIX", "SIZE", "SKAG", "SKAL", "SKAT", "SKEE", "SKET", "SKEW", "SKID", "SKIM", "SKIN", "SKIP", "SKIT", "SKUL", "SLAB", "SLAD", "SLAM", "SLAT", "SLAW", "SLAY", "SLED", "SLEEK", "SLEET", "SLEW", "SLID", "SLIM", "SLING", "SLIP", "SLIT", "SLOB", "SLOG", "SLOP", "SLOT", "SLOW", "SLUG", "SLUM", "SLUM", "SLUR", "SLUT", "SMAL", "SMIT", "SNAG", "SNAP", "SNAR", "SNAT", "SNEAK", "SNIP", "SNIT", "SNOB", "SNOT", "SNOW", "SNUB", "SNUG", "SOAK", "SOAP", "SOAR", "SOCK", "SOD", "SODA", "SOFA", "SOIL", "SOLA", "SOLD", "SOLE", "SOLO", "SOLV", "SOME", "SON", "SONG", "SONS", "SOON", "SOP", "SOPS", "SORE", "SORT", "SOU", "SOUL", "SOUP", "SOUR", "SOW", "SPAC", "SPAD", "SPAG", "SPAN", "SPAR", "SPAS", "SPAT", "SPAW", "SPEC", "SPED", "SPIN", "SPIT", "SPOT", "SPRY", "SPUD", "SPUR", "SQUA", "STAB", "STAG", "STAL", "STAR", "STAT", "STAY", "STEM", "STEP", "STEW", "STIC", "STIM", "STIR", "STOB", "STOP", "STOW", "STUD", "STUM", "STUN", "STUP", "SUCH", "SUCK", "SUD", "SUE", "SUET", "SUM", "SUMP", "SUN", "SUNG", "SUNK", "SUP", "SURE", "SURF", "SWAB", "SWAG", "SWAM", "SWAN", "SWAP", "SWAT", "SWAY", "SWEL", "SWIM", "SWIN", "SWIP", "SWOB", "SWOP", "SWOT",
-        "TAB", "TACK", "TACT", "TAIL", "TAKE", "TALC", "TALE", "TALK", "TALL", "TAME", "TAMP", "TAN", "TANG", "TANK", "TAPE", "TAR", "TARD", "TARE", "TARN", "TARP", "TART", "TASK", "TAST", "TATE", "TAUT", "TAX", "TAXA", "TEAL", "TEAM", "TEAR", "TEAS", "TEAT", "TED", "TEEM", "TEEN", "TELL", "TEMP", "TEN", "TEND", "TENS", "TENT", "TERM", "TEST", "TEXT", "THAN", "THAT", "THE", "THEM", "THEN", "THEN", "THIS", "THIN", "THIO", "THIR", "THUS", "TICK", "TIDE", "TIE", "TIED", "TIER", "TIES", "TIG", "TIGHT", "TILE", "TILL", "TILT", "TIME", "TIMP", "TIN", "TINE", "TING", "TINK", "TINT", "TINY", "TIP", "TIPS", "TIRE", "TIRL", "TOAD", "TOE", "TOIL", "TOLD", "TOLE", "TOM", "TOME", "TON", "TONE", "TONG", "TONS", "TOOK", "TOOL", "TOOM", "TOON", "TOOT", "TOP", "TOPE", "TOPS", "TOR", "TORE", "TORN", "TORT", "TORY", "TOSS", "TOT", "TOTE", "TOUR", "TOUT", "TOW", "TOWN", "TOWS", "TOY", "TRAC", "TRAD", "TRAIL", "TRAM", "TRAP", "TRAS", "TRAW", "TRAY", "TRED", "TREE", "TREK", "TRES", "TREW", "TRIB", "TRIM", "TRIN", "TRIP", "TROC", "TROD", "TROP", "TROT", "TROW", "TRUE", "TUG", "TULP", "TUMP", "TUNA", "TUNE", "TUNG", "TURF", "TURN", "TUSK", "TUSS", "TUTU", "TWIN", "TWIRL", "TWIS", "TWIT", "TYPE", "TYPO", "TYR",
+    "TAB", "TACK", "TACT", "TAIL", "TAKE", "TALC", "TALE", "TALK", "TALL", "TAME", "TAMP", "TAN", "TANG", "TANK", "TAPE", "TAR", "TARD", "TARE", "TARN", "TARP", "TART", "TASK", "TAST", "TATE", "TAUT", "TAX", "TAXA", "TEAL", "TEAM", "TEAR", "TEAS", "TEAT", "TED", "TEEM", "TEEN", "TELL", "TEMP", "TEN", "TEND", "TENS", "TENT", "TERM", "TEST", "TEXT", "THAN", "THAT", "THE", "THEM", "THEN", "THEN", "THIS", "THIN", "THIO", "THIR", "THUS", "TICK", "TIDE", "TIE", "TIED", "TIER", "TIES", "TIG", "TIGHT", "TILE", "TILL", "TILT", "TIME", "TIMP", "TIN", "TINE", "TING", "TINK", "TINT", "TINY", "TIP", "TIPS", "TIRE", "TIRL", "TOAD", "TOE", "TOIL", "TOLD", "TOLE", "TOM", "TOME", "TON", "TONE", "TONG", "TONS", "TOOK", "TOOL", "TOOM", "TOON", "TOOT", "TOP", "TOPE", "TOPS", "TOR", "TORE", "TORN", "TORT", "TORY", "TOSS", "TOT", "TOTE", "TOUR", "TOUT", "TOW", "TOWN", "TOWS", "TOY", "TRAC", "TRAD", "TRAIL", "TRAM", "TRAP", "TRAS", "TRAW", "TRAY", "TRED", "TREE", "TREK", "TRES", "TREW", "TRIB", "TRIM", "TRIN", "TRIP", "TROC", "TROD", "TROP", "TROT", "TROW", "TRUE", "TUG", "TULP", "TUMP", "TUNA", "TUNE", "TUNG", "TURF", "TURN", "TUSK", "TUSS", "TUTU", "TWIN", "TWIRL", "TWIS", "TWIT", "TYPE", "TYPO", "TYR",
     "UGH", "UKES", "ULNA", "ULTRA", "UNCE", "UNCI", "UNCLE", "UNDO", "UNIT", "UNS", "UNT", "UP", "UPON", "UPS", "URGE", "URN", "US", "USE", "USED", "USER", "USES", "UTAH", "UTIL",
     "VACU", "VAGA", "VAIL", "VALE", "VAMP", "VAN", "VANE", "VANS", "VANT", "VAPE", "VARY", "VAST", "VEAL", "VEER", "VEIL", "VEIN", "VELA", "VELD", "VENT", "VERT", "VERY", "VETO", "VEX", "VIA", "VICE", "VICK", "VIDE", "VIES", "VIEW", "VIG", "VILL", "VIM", "VIN", "VINE", "VINO", "VINS", "VIP", "VIRE", "VIRT", "VISA", "VISE", "VITA", "VITE", "VIVA", "FIVE", "VOC", "VOID", "VOIL", "VOL", "VOLT", "VOM", "VOTE", "VOW", "VUGS", "VUZZ",
     "WACK", "WADE", "WADS", "WAGE", "WAGS", "WAIL", "WAIN", "WAIT", "WAKE", "WALK", "WALL", "WALT", "WAN", "WAND", "WANE", "WANG", "WANT", "WAR", "WARD", "WARE", "WARM", "WARN", "WARP", "WARS", "WART", "WASH", "WASP", "WAST", "WAT", "WATCH", "WAVE", "WAVY", "WAX", "WAY", "WAYS", "WEAK", "WEAL", "WEAN", "WEAR", "WEAVE", "WED", "WEE", "WEED", "WEEK", "WEEL", "WEEN", "WEET", "WEFT", "WEIG", "WEIR", "WELD", "WELL", "WEND", "WENT", "WERE", "WERT", "WEST", "WET", "WHAM", "WHAP", "WHAT", "WHEN", "WHEW", "WHEY", "WHIG", "WHIM", "WHIP", "WHIR", "WHIT", "WHO", "WHOA", "WHOM", "WHOP", "WHOR", "WHY", "WICK", "WIDE", "WIDG", "WIFE", "WIG", "WILD", "WILL", "WILT", "WIN", "WINC", "WIND", "WINE", "WING", "WINK", "WINS", "WINT", "WIPE", "WIRE", "WIRY", "WIS", "WISE", "WISH", "WISP", "WIT", "WITH", "WITS", "WIZ", "WOE", "WOLF", "WOM", "WOMB", "WON", "WOND", "WONG", "WONK", "WOO", "WOOD", "WOOF", "WOOL", "WOON", "WOOP", "WOOS", "WOOT", "WORD", "WORE", "WORK", "WORM", "WORN", "WORP", "WORS", "WORT", "WOVE", "WOW", "WRAP", "WREN", "WRIE", "WRIO", "WRIT", "WROK", "WROW", "WRY", "WYND",
     "XRAY",
     "YACH", "YACK", "YAGI", "YAK", "YALE", "YAMS", "YANK", "YAP", "YAPS", "YARD", "YARN", "YAW", "YAWL", "YAWN", "YAWP", "YEAR", "YEAS", "YELL", "YEN", "YENS", "YEP", "YET", "YETI", "YIELD", "YELL", "YIP", "YIPS", "YOB", "YOD", "YOGI", "YOLK", "YOMP", "YON", "YORK", "YOU", "YOUR", "YOW", "YUAN", "YURT", "YUTZ",
     "ZAP", "ZEAL", "ZEB", "ZEN", "ZINC", "ZING", "ZIP", "ZIPS", "ZIT", "ZITS", "ZIZZ", "ZONE", "ZONK", "ZOO", "ZOOM", "ZOUK", "ZULU"
-].map(word => word.toUpperCase());
+    // Add more common words here as needed for robust testing
+].map(word => word.toUpperCase()); // Ensure all dictionary words are uppercase
 
 // --- 4. Basic Word Validation Functions ---
 /**
@@ -122,39 +140,31 @@ function initializeGame() {
     optimalPathLength = 3; // LIME to SOUP is 3 steps optimal (e.g., LIME->LINE->SONE->SOUP or LIME->LUMP->SUMP->SOUP)
     targetTransitionsForScoring = optimalPathLength + 1; // 4 steps
 
-    // This block was causing issues, as it was a duplicate and had a typo
-    // Replaced with a single, clear reset
+    // Reset game state variables to their initial values for a new game
     currentChain = [currentSeedWord]; // Start chain with the seed word
     currentScore = 0; // Reset score
     gameTimer = 0; // Reset timer
     clearInterval(timerInterval); // Clear any old timer
     gameInProgress = true; // Set game active
 
-    // Reset game state for a new game
-currentChain = [currentSeedWord]; // Reset chain to just the seed word
-currentScore = 0; // Reset score
-gameTimer = 0; // Reset timer
-clearInterval(timerInterval); // Clear any old timer
-gameInProgress = true; // Set game active
+    // Reset power-up counts and track used ones for a new game
+    powerUpCounts = { // Reset AVAILABLE power-ups
+        hint: 0,
+        swap: 0,
+        skip: 0
+    };
+    powerUpsUsedThisGame = { // Reset *USED* power-ups
+        hint: 0,
+        swap: 0,
+        skip: 0
+    };
 
-// Reset power-up counts and track used ones for a new game
-powerUpCounts = { // Reset AVAILABLE power-ups
-    hint: 0,
-    swap: 0,
-    skip: 0
-};
-powerUpsUsedThisGame = { // Reset *USED* power-ups
-    hint: 0,
-    swap: 0,
-    skip: 0
-};
-
-// Give player initial hint for the day (or based on daily allowance)
-powerUpCounts.hint = 1; // Give 1 hint to start
+    // Give player initial hint for the day (or based on daily allowance)
+    powerUpCounts.hint = 1; // Give 1 hint to start
 
     // --- Update UI Elements ---
     seedWordDisplay.textContent = currentSeedWord;
-    targetWordDisplay.textContent = currentTargetWord; // Corrected: was currentTargetWord.textContent
+    targetWordDisplay.textContent = currentTargetWord;
     difficultyDisplay.textContent = currentDifficulty;
     userGuessInput.value = ''; // Clear input field
     userGuessInput.disabled = false; // Enable input
@@ -169,7 +179,7 @@ powerUpCounts.hint = 1; // Give 1 hint to start
 
     // Show initial puzzle message
     window.showMessage(`Today's puzzle: ${currentSeedWord} to ${currentTargetWord}!`, 5000);
-    loadLeaderboard(); // Load leaderboard when the game starts
+    // loadLeaderboard(); // This call is causing issues without proper Firebase setup
 }
 
 // --- 6. Core Game Loop Functions ---
