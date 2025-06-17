@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Morph - Daily Puzzle</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font (from Google Fonts) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for chart containers to ensure responsiveness and max-width */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px; /* Max width for chart to prevent excessive stretching */
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px; /* Base height for charts */
+            max-height: 400px; /* Max height for charts */
+        }
+        @media (min-width: 768px) { /* Adjust height for medium screens */
+            .chart-container {
+                height: 350px;
+            }
+        }
+        /* Style for our simple message box */
+        #message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            z-index: 1000;
+            display: none; /* Hidden by default */
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center py-8">
+
+    <!-- Message Box for user feedback (replaces alert()) -->
+    <div id="message-box" class="shadow-lg"></div>
+
+    <!-- The main application container where all game content will be loaded -->
+    <div id="app" class="w-full max-w-4xl bg-white rounded-lg shadow-xl p-6 md:p-8">
+        <!-- Game Title -->
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-6 text-center">Word Morph</h1>
+
+        <!-- Main Puzzle Area -->
+        <div class="flex flex-col items-center justify-center space-y-4 mb-6">
+            <div class="flex flex-col items-center space-y-2">
+                <span class="text-lg text-gray-600">Seed Word:</span>
+                <span id="seed-word-display" class="text-4xl md:text-5xl font-extrabold text-blue-600 tracking-wider">----</span>
+            </div>
+            <div class="text-2xl text-gray-500 font-semibold">↓</div>
+            <div class="flex flex-col items-center space-y-2">
+                <span class="text-lg text-gray-600">Target Word:</span>
+                <span id="target-word-display" class="text-4xl md:text-5xl font-extrabold text-green-600 tracking-wider">----</span>
+            </div>
+            <div class="text-md text-gray-500 mt-2">Difficulty: <span id="difficulty-display" class="font-semibold">N/A</span></div>
+        </div>
+
+        <!-- Word Chain Display Area -->
+        <div class="mb-6 bg-gray-50 p-4 rounded-lg shadow-inner max-h-60 overflow-y-auto">
+            <h2 class="text-xl font-semibold text-gray-700 mb-3 text-center">Your Chain</h2>
+            <ul id="word-chain-list" class="list-none p-0 space-y-1 text-center">
+                <!-- Chain words will be appended here by JavaScript -->
+            </ul>
+        </div>
+
+        <!-- User Input Section -->
+        <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-4 mb-6">
+            <input type="text" id="user-guess-input"
+                class="w-full md:w-64 px-4 py-2 border-2 border-gray-300 rounded-lg text-xl text-center uppercase focus:outline-none focus:border-blue-500 transition duration-200"
+                placeholder="TYPE WORD" autocomplete="off">
+            <button id="submit-guess-btn"
+                class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-blue-700 transition duration-200 transform hover:scale-105">
+                Submit
+            </button>
+        </div>
+
+        <!-- Power-Up Buttons -->
+        <div class="flex flex-wrap justify-center gap-4 mb-6">
+            <button id="hint-btn"
+                class="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-yellow-600 transition duration-200 transform hover:scale-105 opacity-50 cursor-not-allowed" disabled>
+                🔍 Hint (<span id="hint-count">0</span>)
+            </button>
+            <button id="swap-btn"
+                class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-red-600 transition duration-200 transform hover:scale-105 opacity-50 cursor-not-allowed" disabled>
+                🔁 Swap (<span id="swap-count">0</span>)
+            </button>
+            <button id="skip-btn"
+                class="bg-purple-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-purple-600 transition duration-200 transform hover:scale-105 opacity-50 cursor-not-allowed" disabled>
+                ⏭️ Skip (<span id="skip-count">0</span>)
+            </button>
+        </div>
+
+        <!-- Score and Timer Display -->
+        <div class="flex justify-around items-center mb-6 text-xl font-semibold text-gray-700">
+            <span>Score: <span id="current-score">0</span></span>
+            <span>Time: <span id="timer-display">0:00</span></span>
+        </div>
+
+        <!-- Leaderboard Section -->
+        <div class="bg-gray-50 p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 text-center">Today's Top Scores</h2>
+            <ul id="leaderboard-list" class="list-none p-0 space-y-2">
+                <!-- Leaderboard entries will be loaded here by JavaScript -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- Chart.js CDN (for potential future charts like score trends) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+
+    <!-- Your game's main JavaScript logic -->
+    <script type="module" src="./script.js"></script>
+
+    <!-- Firebase SDKs (using type="module" for modern JS imports) -->
+    <!-- This block should be LAST, as it calls initializeGameApp from script.js -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, orderBy, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // IMPORTANT: Replace this with your actual firebaseConfig from the Firebase console!
+          const firebaseConfig = {
+
+    apiKey: "AIzaSyAn2YxRGn9tsq0CJ3t2EkpepIIN-idxG8w",
+
+    authDomain: "word-morph-game-72800.firebaseapp.com",
+
+    projectId: "word-morph-game-72800",
+
+    storageBucket: "word-morph-game-72800.firebasestorage.app",
+
+    messagingSenderId: "737536730730",
+
+    appId: "1:737536730730:web:e623537d4bd46d57a44c13"
+
+  }; // YOU MUST REPLACE THIS LINE WITH YOUR ACTUAL CONFIG
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const firebaseConfigFromCanvas = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
+
+        const app = initializeApp(firebaseConfigFromCanvas);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Make Firebase instances and user ID globally accessible to script.js
+        window.firebaseApp = app;
+        window.firestoreDb = db;
+        window.firebaseAuth = auth;
+        window.currentUserId = null; // Will be set after auth state changes
+        window.firebaseReady = false; // New flag: set to true when Firebase auth is done
+
+        // Simple message box function (exposed globally for script.js)
+        window.showMessage = (message, duration = 3000) => {
+            const msgBox = document.getElementById('message-box');
+            if (msgBox) {
+                msgBox.textContent = message;
+                msgBox.style.display = 'block';
+                setTimeout(() => {
+                    msgBox.style.display = 'none';
+                }, duration);
+            }
+        };
+
+        // Listen for authentication state changes and set currentUserId
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                window.currentUserId = user.uid;
+            } else {
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        window.currentUserId = auth.currentUser.uid;
+                    } else {
+                        const anonUser = await signInAnonymously(auth);
+                        window.currentUserId = anonUser.user.uid;
+                    }
+                } catch (error) {
+                    console.error("Firebase Auth Error:", error);
+                    window.currentUserId = crypto.randomUUID(); // Fallback to a random ID
+                }
+            }
+            console.log("Firebase initialized. User ID:", window.currentUserId);
+            window.firebaseReady = true; // Set flag to true when Firebase auth is confirmed
+
+            // **CRITICAL:** Wait for DOM to be fully loaded before trying to initialize the game.
+            // This ensures all HTML elements are ready for script.js to access.
+            document.addEventListener('DOMContentLoaded', () => {
+                if (window.firebaseReady) { // Double check Firebase is ready
+                    if (window.initializeGameApp) { // Check if script.js has defined this
+                        console.log("DOM and Firebase ready. Calling initializeGameApp().");
+                        window.initializeGameApp(); // FINALLY trigger the game to start
+                    } else {
+                        console.error("Error: window.initializeGameApp not defined. script.js might not have loaded correctly.");
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
