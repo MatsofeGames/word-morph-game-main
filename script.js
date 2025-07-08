@@ -140,6 +140,7 @@ async function initializeGame() {
             currentTargetWord = puzzleData.target_word;
             currentDifficulty = puzzleData.difficulty;
             optimalPathLength = puzzleData.optimal_path_length;
+            window.currentOptimalPath = puzzleData.optimal_path; // Store the full optimal path
             console.log(`Successfully loaded puzzle for ${todayString}: ${currentSeedWord} to ${currentTargetWord}`);
         } else {
             console.warn(`No puzzle found for ${todayString}. Using default puzzle.`);
@@ -148,6 +149,7 @@ async function initializeGame() {
             currentTargetWord = "ROSE";
             currentDifficulty = "Medium";
             optimalPathLength = 3; // Optimal for READ-ROSE
+            window.currentOptimalPath = ['READ', 'HEAD', 'HELD', 'HOLD', 'HOLE', 'ROLE', 'ROSE']; // Default optimal path
             window.showMessage(`No puzzle for ${todayString}. Using default READ to ROSE.`, 5000);
         }
     } catch (e) {
@@ -562,25 +564,34 @@ hintBtn.addEventListener('click', () => {
         powerUpsUsedThisGame.hint++; // Increment count of hints *used this game*
         updatePowerUpDisplays(); // Update UI for hint count
         // PASTE THIS CODE BLOCK HERE, after updatePowerUpDisplays();
+        // REPLACE the existing hint logic block with this:
         const lastWord = currentChain[currentChain.length - 1];
-        let possibleNextWords = [];
+        let hintWord = null;
 
-        // Iterate through the entire dictionary to find valid next morph words
-        for (let i = 0; i < dictionary.length; i++) {
-            const dictWord = dictionary[i];
-            // Check if the dictionary word is a valid morph step from the last word in the chain
-            // and ensure it's not the same as the last word (already in chain)
-            if (isValidMorphStep(lastWord, dictWord) && dictWord !== lastWord) {
-                possibleNextWords.push(dictWord);
-            }
-        }
+        // Find the index of the last word in the current chain within the optimal path
+        const lastWordIndexInOptimalPath = window.currentOptimalPath.indexOf(lastWord);
 
-        if (possibleNextWords.length > 0) {
-            // Choose a random hint from the possible words
-            const hintWord = possibleNextWords[Math.floor(Math.random() * possibleNextWords.length)];
-            window.showMessage(`Hint: Try '${hintWord}' next!`, 5000);
+        if (lastWordIndexInOptimalPath !== -1 && lastWordIndexInOptimalPath < window.currentOptimalPath.length - 1) {
+            // If the current word is on the optimal path and not the target word,
+            // the hint is the *next* word on the optimal path.
+            hintWord = window.currentOptimalPath[lastWordIndexInOptimalPath + 1];
+            window.showMessage(`Hint: The next optimal step is '${hintWord}'!`, 5000);
         } else {
-            window.showMessage("No direct hint available from the dictionary for this word.", 5000);
+            // Fallback: If current word is not on optimal path, or is the target,
+            // provide a random valid morph from the dictionary (current behavior).
+            let possibleNextWords = [];
+            for (let i = 0; i < dictionary.length; i++) {
+                const dictWord = dictionary[i];
+                if (isValidMorphStep(lastWord, dictWord) && dictWord !== lastWord) {
+                    possibleNextWords.push(dictWord);
+                }
+            }
+            if (possibleNextWords.length > 0) {
+                hintWord = possibleNextWords[Math.floor(Math.random() * possibleNextWords.length)];
+                window.showMessage(`Hint: Try '${hintWord}' next! (Not on optimal path)`, 5000);
+            } else {
+                window.showMessage("No direct hint available from the dictionary for this word.", 5000);
+            }
         }
     } else {
         window.showMessage("No hints available!", 5000);
