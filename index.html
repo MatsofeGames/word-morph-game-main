@@ -40,16 +40,30 @@
         #message-box {
             position: fixed;
             top: 20px;
+            /* Keep it near the top */
             left: 50%;
             transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.7);
+            background-color: rgba(25, 135, 84, 0.9);
+            /* More vibrant green background */
             color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
+            padding: 15px 30px;
+            /* More padding */
+            border-radius: 12px;
+            /* Slightly more rounded */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            /* Add a shadow */
             z-index: 1000;
             display: none;
             /* Hidden by default */
-            font-size: 0.9em;
+            font-size: 1.2em;
+            /* Larger font size */
+            font-weight: 600;
+            /* Bolder text */
+            text-align: center;
+            min-width: 250px;
+            /* Ensure it's not too narrow */
+            max-width: 80%;
+            /* Don't let it get too wide on large screens */
         }
     </style>
 

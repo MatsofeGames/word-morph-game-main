@@ -52,7 +52,7 @@ const dictionary = [
     // --- Full Dictionary (Expanded for robustness) ---
     "AHEM", "ABLE", "ACID", "AIDE", "AIL", "AIM", "AIR", "ALAS", "ALGA", "ALL", "ALLY", "ALOE", "ALSO", "ALT", "AMEN", "AMI", "AMID", "AMMO", "AMOK", "AMP", "AND", "ANEW", "ANTI", "ANTS", "APE", "APEX", "APES", "APPS", "ARCH", "ARE", "ARID", "ARMS", "ARMY", "ARTS", "ASH", "ASIA", "ASK", "AUNT", "AURA", "AUTO", "AVE", "AWAY", "AWE", "AXE", "AXIS", "AXLE",
     "BACK", "BAD", "BAG", "BAIL", "BAIT", "BAKE", "BALD", "BALE", "BALL", "BALM", "BAND", "BANE", "BANG", "BANK", "BAR", "BARD", "BARE", "BARK", "BARN", "BASE", "BASH", "BAT", "BATH", "BATS", "BEAD", "BEAK", "BEAM", "BEAN", "BEAR", "BEAT", "BED", "BEEF", "BEEN", "BEER", "BELL", "BELT", "BEND", "BENT", "BEST", "BETA", "BIAS", "BIB", "BID", "BIG", "BIKE", "BILD", "BILL", "BIND", "BIRD", "BITE", "BITS", "BLAB", "BLACK", "BLAH", "BLAME", "BLAND", "BLARE", "BLASE", "BLAST", "BLEB", "BLESS", "BLIP", "BLOB", "BLOC", "BLOG", "BLON", "BLOT", "BLOW", "BLUE", "BLUM", "BLUR", "BOAR", "BOAT", "BODE", "BOG", "BOGY", "BOLD", "BOLE", "BOMB", "BONA", "BOND", "BONE", "BONK", "BOOK", "BOOM", "BOON", "BOOR", "BOOT", "BORD", "BORE", "BORN", "BOSS", "BOTH", "BOWL", "BOWS", "BOX", "BOY", "BRAD", "BRAG", "BRAID", "BRAIN", "BRAKE", "BRAN", "BRASS", "BRAT", "BRAVE", "BRAWL", "BRAY", "BRED", "BREW", "BRIEF", "BRIM", "BRIN", "BRIN", "BRIT", "BROD", "BROG", "BROK", "BROM", "BRON", "BROO", "BROW", "BUCK", "BUD", "BUFF", "BULB", "BULK", "BULL", "BUMP", "BUN", "BUNG", "BUNK", "BUNT", "BURG", "BURN", "BURP", "BURR", "BUSH", "BUSY", "BUT", "BUTT", "BUYS", "BUZZ",
-    "CAB", "CAGE", "CAKE", "CALL", "CALM", "CAM", "CAME", "CAMP", "CAN", "CANE", "CANS", "CAPE", "CAR", "CARD", "CARE", "CARP", "CARS", "CART", "CASE", "CASH", "CAST", "CAT", "CAVE", "CEIL", "CELL", "CENT", "CHAP", "CHAR", "CHAT", "CHEF", "CHIC", "CHIN", "CHIP", "CHIT", "CHOIR", "CHOM", "CHOP", "CHOW", "CHUM", "CHUR", "CITE", "CITY", "CLAD", "CLAG", "CLAM", "CLAN", "CLAP", "CLAW", "CLAY", "CLIP", "CLOG", "CLON", "CLOT", "CLOU", "CLOW", "CLUB", "CLUE", "COAL", "COAT", "COAX", "COB", "COCK", "COD", "CODE", "COGN", "COIL", "COIN", "COKE", "COLD", "COLT", "COME", "COMP", "CON", "CONE", "CONK", "COOL", "COOP", "COP", "COPE", "COPS", "CORD", "CORE", "CORN", "CORS", "COST", "COT", "COUP", "COVE", "COWL", "COZY", "CRAB", "CRAD", "CRAG", "CRAM", "CRAN", "CRAP", "CRAS", "CRAW", "CRAY", "CRED", "CREM", "CREP", "CREW", "CRIA", "CRIM", "CRIN", "CRIP", "CROC", "CROP", "CROW", "CRUD", "CRUM", "CRUP", "CRUX", "CUB", "CUBE", "CUFF", "CULL", "CUP", "CURB", "CURD", "CURE", "CURL", "CURT", "CUSH", "CUSP", "CUT", "CUTE", "CYCL",
+    "CAB", "CAGE", "CAKE", "CALL", "CALM", "CAM", "CAME", "CAMP", "CAN", "CANE", "CANS", "CAPE", "CAR", "CARD", "CARE", "CARP", "CARS", "CART", "CASE", "CASH", "CAST", "CAT", "CAVE", "CEIL", "CELL", "CENT", "CHAP", "CHAR", "CHAT", "CHEF", "CHIC", "CHIN", "CHIP", "CHIT", "CHOIR", "CHOM", "CHOP", "CHOW", "CHUM", "CHUR", "CITE", "CITY", "CLAD", "CLAG", "CLAM", "CLAN", "CLAP", "CLAW", "CLAY", "CLIP", "CLOG", "CLON", "CLOT", "CLOU", "CLOW", "CLUB", "CLUE", "COAL", "COAT", "COAX", "COB", "COCK", "COD", "CODE", "COOK", "COIL", "COIN", "COKE", "COLD", "COLT", "COME", "COMP", "CON", "CONE", "CONK", "COOL", "COOP", "COP", "COPE", "COPS", "CORD", "CORE", "CORN", "CORS", "COST", "COT", "COUP", "COVE", "COWL", "COZY", "CRAB", "CRAD", "CRAG", "CRAM", "CRAN", "CRAP", "CRAS", "CRAW", "CRAY", "CRED", "CREM", "CREP", "CREW", "CRIA", "CRIM", "CRIN", "CRIP", "CROC", "CROP", "CROW", "CRUD", "CRUM", "CRUP", "CRUX", "CUB", "CUBE", "CUFF", "CULL", "CUP", "CURB", "CURD", "CURE", "CURL", "CURT", "CUSH", "CUSP", "CUT", "CUTE", "CYCL",
     "DAB", "DAD", "DAFT", "DALE", "DAME", "DAMN", "DAMP", "DAN", "DAND", "DANE", "DANG", "DANK", "DARE", "DARK", "DART", "DASH", "DATE", "DAUB", "DAWN", "DAYS", "DAZE", "DEAD", "DEAF", "DEAL", "DEAN", "DEAR", "DEBT", "DECK", "DEED", "DEEM", "DEEP", "DEER", "DEFT", "DELL", "DENT", "DENY", "DEPT", "DESK", "DIAL", "DICE", "DIE", "DIET", "DIG", "DIME", "DIN", "DINE", "DING", "DINT", "DIP", "DIRT", "DISC", "DISH", "DISK", "DIVA", "DIVE", "DOCK", "DOE", "DOFF", "DOG", "DOLE", "DOLL", "DOLT", "DOME", "DON", "DONE", "DONG", "DONS", "DOOM", "DOOR", "DOPE", "DORM", "DORP", "DORY", "DOS", "DOSE", "DOT", "DOUR", "DOWN", "DOZE", "DRAB", "DRAG", "DRAM", "DRAW", "DREW", "DRIB", "DRIP", "DROP", "DRUB", "DRUG", "DRUM", "DRY", "DUAL", "DUCT", "DUEL", "DUET", "DUFF", "DUG", "DUKE", "DULL", "DUMB", "DUMP", "DUN", "DUNE", "DUNG", "DUNK", "DUST", "DUTY", "DWELL", "DYKE",
     "EACH", "EAR", "EARL", "EARN", "EASE", "EAST", "EASY", "EATS", "EDGE", "EDIT", "EEL", "EGG", "EGO", "ELSE", "EMIT", "END", "ENDS", "EVEN", "EVER", "EVIL", "EXAM", "EXIT", "EYES",
     "FACE", "FACT", "FADE", "FAIL", "FAIN", "FAIR", "FAKE", "FALL", "FAME", "FAN", "FANG", "FANS", "FARM", "FAST", "FAT", "FATE", "FAULT", "FAWN", "FEAR", "FEAT", "FEED", "FEEL", "FEET", "FELL", "FELT", "FEM", "FEND", "FERN", "FEST", "FETA", "FIB", "FICK", "FIDO", "FIEF", "FIFE", "FIG", "FIGHT", "FILE", "FILL", "FILM", "FIND", "FINE", "FING", "FINK", "FIRE", "FIRM", "FISH", "FIST", "FIT", "FIVE", "FIX", "FLAG", "FLAK", "FLAM", "FLAME", "FLAN", "FLAP", "FLAT", "FLAW", "FLEA", "FLEE", "FLED", "FLET", "FLEX", "FLIX", "FLIP", "FLIT", "FLOG", "FLOP", "FLOW", "FLUB", "FLUE", "FLUG", "FLUM", "FLUS", "FLUT", "FOB", "FOG", "FOIL", "FOLD", "FOLK", "FOND", "FONT", "FOOD", "FOOL", "FOOT", "FOR", "FORD", "FORE", "FORK", "FORM", "FORT", "FOSS", "FOUL", "FOUR", "FOWL", "FOX", "FOXY", "FRAG", "FRAM", "FRAT", "FRAY", "FREE", "FRET", "FRIG", "FROG", "FROM", "FRONT", "FROTH", "FROW", "FRUG", "FULL", "FUME", "FUN", "FUND", "FUNK", "FURL", "FURY", "FUSE", "FUSS", "FUZZ",
@@ -61,7 +61,7 @@ const dictionary = [
     "ICE", "IDEA", "IDLE", "IDOL", "IF", "ILL", "IMP", "IN", "INCH", "INFO", "INK", "INN", "INTO", "ION", "IONS", "IRE", "IRON", "IS", "ISH", "ISLE", "ITCH", "ITEM", "ITS", "IVY",
     "JAB", "JACK", "JAG", "JAIL", "JAM", "JAMS", "JAR", "JAW", "JAZZ", "JEAN", "JEER", "JELL", "JESU", "JET", "JIB", "JILT", "JIM", "JING", "JINX", "JOB", "JOCK", "JOEY", "JOG", "JOIN", "JOINT", "JOKE", "JOLT", "JOSH", "JOT", "JOWL", "JOY", "JUAN", "JUDO", "JUG", "JUMP", "JUNK", "JUST", "JUTE",
     "KEEL", "KEEN", "KEEP", "KELP", "KEN", "KENT", "KEPT", "KERN", "KEY", "KICK", "KID", "KILL", "KILO", "KILT", "KIN", "KIND", "KING", "KINK", "KINO", "KIP", "KIPS", "KISS", "KIT", "KITE", "KITS", "KNAP", "KNEE", "KNEW", "KNIT", "KNOB", "KNOC", "KNOW", "KNUB", "KNOX", "KOLA", "KONG", "KOOK", "KUDO", "KUDU", "KURL",
-    "LAB", "LACE", "LACK", "LAD", "LADE", "LAG", "LAID", "LAIN", "LAIR", "LAKE", "LAMA", "LAMB", "LAME", "LAMP", "LAND", "LANE", "LANG", "LANK", "LARD", "LARGE", "LASH", "LAST", "LATE", "LATH", "LAVA", "LAVE", "LAW", "LAWN", "LAWS", "LAZY", "LEAD", "LEAF", "LEAK", "LEAN", "LEAP", "LEAR", "LEASE", "LEAST", "LEAVE", "LED", "LEE", "LEFT", "LEG", "LEND", "LENS", "LENT", "LESS", "LET", "LETS", "LEVY", "LIAR", "LICE", "LICK", "LID", "LIE", "LIEN", "LIFE", "LIFT", "LIKE", "LILL", "LILT", "LIME", "LIMP", "LINE", "LINK", "LINT", "LION", "LIRA", "LIRE", "LIST", "LIVE", "LOAD", "LOAF", "LOAM", "LOAN", "LOAT", "LOB", "LOBE", "LOCA", "LOCK", "LOCO", "LOD", "LODE", "LOFT", "LOG", "LOGO", "LOIN", "LOLL", "LONG", "LOOK", "LOOM", "LOON", "LOOP", "LOOS", "LOOT", "LOPE", "LORD", "LORE", "LOSE", "LOSS", "LOST", "LOT", "LOUD", "LOVE", "LOW", "LUBE", "LUCK", "LUDO", "LUGE", "LUG", "LULL", "LUMP", "LUN", "LUNG", "LURE", "LURK", "LUSH", "LUST", "LUT", "LUXE", "LYNX", "LYRE",
+    "LAB", "LACE", "LACK", "LAD", "LADE", "LAG", "LAID", "LAIN", "LAIR", "LAKE", "LAMA", "LAMB", "LAME", "LAMP", "LAND", "LANE", "LANG", "LANK", "LARD", "LARGE", "LASH", "LAST", "LATE", "LATH", "LAVA", "LAVE", "LAW", "LAWN", "LAWS", "LAZY", "LEAD", "LEAF", "LEAK", "LEAN", "LEAP", "LEAR", "LEASE", "LEAST", "LEAVE", "LED", "LEE", "LEFT", "LEG", "LEND", "LENS", "LENT", "LESS", "LET", "LETS", "LEVY", "LIAR", "LICE", "LICK", "LID", "LIE", "LIEN", "LIFE", "LIFT", "LIKE", "LILL", "LILT", "LIME", "LIMP", "LINE", "LINK", "LINT", "LION", "LIRA", "LIRE", "LIST", "LIVE", "LOAD", "LOAF", "LOAM", "LOAN", "LOAT", "LOB", "LOBE", "LOCA", "LOCK", "LOCO", "LOD", "LODE", "LOFT", "LOG", "LOGO", "LOIN", "LOLL", "LONG", "LOOK", "LOOM", "LOON", "LOOP", "LOOS", "LOOT", "LOPE", "LORD", "LORE", "LOSE", "LOSS", "LOST", "LOT", "LOUD", "LOVE", "LOWS", "LUBE", "LUCK", "LUDO", "LUGE", "LUG", "LULL", "LUMP", "LUN", "LUNG", "LURE", "LURK", "LUSH", "LUST", "LUT", "LUXE", "LYNX", "LYRE",
     "MAAM", "MACE", "MACH", "MAD", "MADE", "MAGE", "MAGN", "MAID", "MAIL", "MAIN", "MAKE", "MALE", "MALI", "MALL", "MALT", "MAM", "MAN", "MANE", "MANY", "MAP", "MAR", "MARC", "MARE", "MARK", "MARL", "MARS", "MART", "MASH", "MASK", "MASS", "MAST", "MAT", "MATE", "MATH", "MAUL", "MAY", "MAYB", "MAZE", "MEAD", "MEAL", "MEAN", "MEAT", "MEET", "MELT", "MEMO", "MEN", "MEND", "MENT", "MENU", "MER", "MERE", "MESH", "MESS", "MET", "METAL", "METE", "MEW", "MICE", "MID", "MIKE", "MILD", "MILE", "MILK", "MILL", "MIM", "MIME", "MIMP", "MIN", "MIND", "MINE", "MING", "MINK", "MINT", "MINX", "MIRA", "MIRE", "MIRK", "MIRR", "MIST", "MIT", "MITE", "MIX", "MOAN", "MOAT", "MOCK", "MODE", "MOG", "MOLD", "MOLE", "MOLL", "MOLT", "MOM", "MOMS", "MONK", "MONO", "MOOD", "MOON", "MOOR", "MOOS", "MOOT", "MOP", "MOPE", "MOR", "MORE", "MORN", "MORT", "MOSS", "MOST", "MOTH", "MOVE", "MOW", "MUCH", "MUCK", "MUFF", "MUG", "MULL", "MUMP", "MUMY", "MUNI", "MURAL", "MUS", "MUSE", "MUST", "MUTT", "MUZZ", "MYRR", "MYTH",
     "NAB", "NAG", "NAIL", "NAME", "NAN", "NAP", "NAPE", "NAPS", "NASH", "NAST", "NAT", "NAVE", "NAVY", "NEAR", "NEAT", "NECK", "NEED", "NEEM", "NEIL", "NELL", "NEON", "NEP", "NERD", "NEST", "NET", "NEW", "NEWS", "NEXT", "NICE", "NICK", "NIGH", "NIL", "NIM", "NIMB", "NIML", "NINE", "NIP", "NIPS", "NIT", "NITS", "NOB", "NODE", "NOEL", "NOG", "NOIL", "NOIS", "NOM", "NONE", "NOOK", "NOON", "NOR", "NORM", "NOSE", "NOT", "NOTE", "NOUT", "NOV", "NOW", "NUDE", "NUG", "NULL", "NUMB", "NUN", "NUNC", "NURT", "NUT",
     "OAF", "OAK", "OAR", "OATH", "OBEY", "ODD", "ODE", "OF", "OFF", "OH", "OIL", "OK", "OLD", "ON", "ONCE", "ONE", "ONES", "ONLY", "ONTO", "OOH", "OOL", "OOM", "OON", "OOP", "OOPS", "OOR", "OOS", "OOT", "OOZE", "OPEN", "OPT", "OR", "ORAL", "ORE", "ORIG", "ORT", "OS", "OTHER", "OUCH", "OUR", "OUT", "OVAL", "OVEN", "OVER", "OWED", "OWEN", "OWN", "OXEN", "OXY",
@@ -148,11 +148,11 @@ async function initializeGame() {
             currentTargetWord = "ROSE";
             currentDifficulty = "Medium";
             optimalPathLength = 3; // Optimal for READ-ROSE
-            window.showMessage(`No puzzle for ${todayString}. Using default READ to ROSE.`, 4000);
+            window.showMessage(`No puzzle for ${todayString}. Using default READ to ROSE.`, 5000);
         }
     } catch (e) {
         console.error("Error loading daily puzzle from Firebase: ", e);
-        window.showMessage("Error loading daily puzzle. Using default.", 3000);
+        window.showMessage("Error loading daily puzzle. Using default.", 5000);
         // Fallback to a default puzzle on error
         currentSeedWord = "READ";
         currentTargetWord = "ROSE";
@@ -212,7 +212,7 @@ async function initializeGame() {
  */
 function processGuess() {
     if (!gameInProgress) { // Prevent input if game is not active
-        window.showMessage("Game not in progress. Refresh for a new puzzle.", 2000);
+        window.showMessage("Game not in progress. Refresh for a new puzzle.", 5000);
         return;
     }
 
@@ -220,19 +220,19 @@ function processGuess() {
     userGuessInput.value = ''; // Clear input field immediately
 
     if (guess.length === 0) {
-        window.showMessage("Please enter a word.", 2000);
+        window.showMessage("Please enter a word.", 5000);
         return;
     }
 
     const lastWordInChain = currentChain[currentChain.length - 1];
 
     if (!isValidWord(guess)) {
-        window.showMessage(`'${guess}' is not a valid word.`, 3000);
+        window.showMessage(`'${guess}' is not a valid word.`, 5000);
         return;
     }
 
     if (!isValidMorphStep(lastWordInChain, guess)) {
-        window.showMessage(`'${guess}' is not a valid morph from '${lastWordInChain}'. One letter, same position!`, 4000);
+        window.showMessage(`'${guess}' is not a valid morph from '${lastWordInChain}'. One letter, same position!`, 5000);
         return;
     }
 
@@ -340,7 +340,7 @@ function endGame(won) {
             date: new Date().toISOString(), // Standard date format for sorting
             difficulty: currentDifficulty // Save difficulty too
         });
-        window.showMessage("Score saved and leaderboard updated!", 4000); // Confirm saving
+        window.showMessage("Score saved and leaderboard updated!", 5000); // Confirm saving
     }
 }
 
@@ -369,7 +369,7 @@ async function saveScore(userId, scoreData) {
         console.log("Score successfully written to Firestore!");
         const minutes = Math.floor(gameTimer / 60);
         const seconds = gameTimer % 60;
-        window.showMessage(`Score ${currentScore} (Time: ${minutes}:${String(seconds).padStart(2, '0')}) saved and leaderboard updated!`, 4000);
+        window.showMessage(`Score ${currentScore} (Time: ${minutes}:${String(seconds).padStart(2, '0')}) saved and leaderboard updated!`, 5000);
         loadLeaderboard(); // Reload leaderboard to display the updated scores
 
     } catch (e) {
@@ -561,13 +561,33 @@ hintBtn.addEventListener('click', () => {
         powerUpCounts.hint--; // Decrement available hints
         powerUpsUsedThisGame.hint++; // Increment count of hints *used this game*
         updatePowerUpDisplays(); // Update UI for hint count
-        window.showMessage("Hint power-up used! (Logic coming soon!)", 2000);
+        // PASTE THIS CODE BLOCK HERE, after updatePowerUpDisplays();
+        const lastWord = currentChain[currentChain.length - 1];
+        let possibleNextWords = [];
+
+        // Iterate through the entire dictionary to find valid next morph words
+        for (let i = 0; i < dictionary.length; i++) {
+            const dictWord = dictionary[i];
+            // Check if the dictionary word is a valid morph step from the last word in the chain
+            // and ensure it's not the same as the last word (already in chain)
+            if (isValidMorphStep(lastWord, dictWord) && dictWord !== lastWord) {
+                possibleNextWords.push(dictWord);
+            }
+        }
+
+        if (possibleNextWords.length > 0) {
+            // Choose a random hint from the possible words
+            const hintWord = possibleNextWords[Math.floor(Math.random() * possibleNextWords.length)];
+            window.showMessage(`Hint: Try '${hintWord}' next!`, 5000);
+        } else {
+            window.showMessage("No direct hint available from the dictionary for this word.", 5000);
+        }
     } else {
-        window.showMessage("No hints available!", 2000);
+        window.showMessage("No hints available!", 5000);
     }
 });
-swapBtn.addEventListener('click', () => { window.showMessage("Swap power-up clicked (logic coming soon!)", 2000); });
-skipBtn.addEventListener('click', () => { window.showMessage("Skip power-up clicked (logic coming soon!)", 2000); });
+swapBtn.addEventListener('click', () => { window.showMessage("Swap power-up clicked (logic coming soon!)", 5000); });
+skipBtn.addEventListener('click', () => { window.showMessage("Skip power-up clicked (logic coming soon!)", 5000); });
 
 // --- Game Initialization Trigger ---
 // This listener ensures the game initializes only AFTER the entire HTML document is parsed.
