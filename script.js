@@ -34,6 +34,11 @@ const hintBtn = document.getElementById('hint-btn');
 const swapBtn = document.getElementById('swap-btn');
 const skipBtn = document.getElementById('skip-btn');
 const leaderboardList = document.getElementById('leaderboard-list');
+const tutorialModal = document.getElementById('tutorial-modal');
+const tutorialTitle = document.getElementById('tutorial-title');
+const tutorialText = document.getElementById('tutorial-text');
+const tutorialNextBtn = document.getElementById('tutorial-next-btn');
+const tutorialSkipBtn = document.getElementById('tutorial-skip-btn');
 
 // --- 3. Game Dictionary (Crucial for Word Validation) ---
 const dictionary = [
@@ -603,18 +608,71 @@ skipBtn.addEventListener('click', () => { window.showMessage("Skip power-up clic
 // --- Game Initialization Trigger ---
 // This listener ensures the game initializes only AFTER the entire HTML document is parsed.
 // It also checks if Firebase has finished its async initialization.
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOMContentLoaded fired. Checking Firebase readiness...");
+// --- Tutorial Logic ---
+const tutorialSteps = [
+    { title: "Welcome to Word Morph!", text: "Your goal is to transform the START word into the TARGET word." },
+    { title: "How to Play (Rule 1)", text: "You can only change ONE letter at a time to create a new word." },
+    { title: "How to Play (Rule 2)", text: "Each new word MUST be a real word from our dictionary!" },
+    { title: "How to Play (Rule 3)", text: "Try to find the shortest path to earn more points (Optimal Path Length)." },
+    { title: "Power-Ups!", text: "Use your Hints, Swaps, and Skips wisely to help you out!" },
+    { title: "Leaderboard", text: "Your best scores will be saved to the leaderboard. Good luck!" }
+];
+let currentTutorialStep = 0; // Tracks which step of the tutorial we are on
 
-    const checkFirebaseGlobalsAndInit = setInterval(() => {
+function showTutorialStep() {
+    if (currentTutorialStep < tutorialSteps.length) {
+        tutorialTitle.textContent = tutorialSteps[currentTutorialStep].title;
+        tutorialText.textContent = tutorialSteps[currentTutorialStep].text;
+        tutorialModal.classList.remove('hidden'); // Show the modal
+    } else {
+        // Tutorial is complete or skipped
+        tutorialModal.classList.add('hidden'); // Hide modal
+        localStorage.setItem('wordMorphTutorialSeen', 'true'); // Mark tutorial as seen
+        window.initializeGameApp(); // Start the game after tutorial
+    }
+}
+
+// Event listeners for tutorial buttons
+tutorialNextBtn.addEventListener('click', () => {
+    currentTutorialStep++;
+    showTutorialStep();
+});
+
+tutorialSkipBtn.addEventListener('click', () => {
+    tutorialModal.classList.add('hidden'); // Hide modal
+    localStorage.setItem('wordMorphTutorialSeen', 'true'); // Mark as seen
+    window.initializeGameApp(); // Start the game immediately
+});
+// --- Game Initialization Trigger (This is the Master Switch!) ---
+// This function will be called by index.html when both the DOM and Firebase are fully ready.
+// It's exposed globally for index.html to call.
+window.initializeGameApp = () => {
+    console.log("initializeGameApp() called from index.html.");
+    initializeGame(); // Call the main game setup function
+    loadLeaderboard(); // Load the leaderboard on game start
+};
+
+// --- DOM Content Loaded Listener (Starts the Firebase & Game Readiness/Tutorial Check) ---
+// This makes sure our script waits for the webpage to be fully loaded and Firebase ready.
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOMContentLoaded fired. Script.js waiting for Firebase globals...");
+
+    const checkFirebaseGlobalsInterval = setInterval(() => {
         // Check if ALL necessary global Firebase variables are available
         if (window.firebaseReady && window.firestoreDb && window.appId && window.currentUserId) {
-            clearInterval(checkFirebaseGlobalsAndInit); // Stop checking
-            console.log("All Firebase globals are ready. Initializing game and loading leaderboard.");
-            initializeGame(); // Start the game's UI and logic
-            loadLeaderboard(); // Load the leaderboard now that Firebase DB is guaranteed to be ready
+            clearInterval(checkFirebaseGlobalsInterval); // Stop checking once everything is ready
+            console.log("All Firebase globals are ready. Proceeding with game initialization or tutorial.");
+
+            // Check if tutorial has been seen before using localStorage
+            const tutorialSeen = localStorage.getItem('wordMorphTutorialSeen');
+            if (tutorialSeen === 'true') {
+                window.initializeGameApp(); // Start the game directly if tutorial seen
+            } else {
+                currentTutorialStep = 0; // Reset to first step
+                showTutorialStep(); // Show tutorial if not seen
+            }
         } else {
-            console.log("Waiting for Firebase globals to be fully ready...");
+            console.log("Waiting for Firebase globals to be fully available...");
         }
-    }, 50); // Check more frequently (e.g., every 50ms)
+    }, 50); // Check every 50 milliseconds
 });
