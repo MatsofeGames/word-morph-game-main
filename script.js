@@ -351,15 +351,25 @@ function updatePowerUpDisplays() {
 /**
  * Starts the game timer.
  */
+/**
+ * Starts or resumes the game timer.
+ */
 function startTimer() {
-    gameTimer = 0; // Reset timer to 0 seconds
-    timerDisplay.textContent = `0:00`; // Ensure display is reset
+    if (timerInterval) { // Clear any existing interval to prevent multiple timers
+        clearInterval(timerInterval);
+    }
+    // Only reset gameTimer to 0 if it's a completely new game (gameInProgress just set to true by initializeGame)
+    // Otherwise, it means we are resuming from a paused state (e.g., after tutorial)
+    if (currentChain.length === 1 && gameTimer === 0) { // Check if it's a fresh start
+        gameTimer = 0;
+    }
+    timerDisplay.textContent = `${Math.floor(gameTimer / 60)}:${String(gameTimer % 60).padStart(2, '0')}`; // Ensure display is updated correctly on start/resume
+
     timerInterval = setInterval(() => {
         gameTimer++;
         const minutes = Math.floor(gameTimer / 60);
         const seconds = gameTimer % 60;
-        timerDisplay.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-        // Basic time limit for testing (e.g., 3 minutes)
+        timerDisplay.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
         if (gameTimer >= 180 && gameInProgress) { // 3 minutes = 180 seconds
             endGame(false); // Game over due to time
         }
@@ -731,14 +741,30 @@ let currentTutorialStep = 0; // Tracks which step of the tutorial we are on
 
 function showTutorialStep() {
     if (currentTutorialStep < tutorialSteps.length) {
+        // Pause the game when tutorial is active
+        clearInterval(timerInterval); // Stop the timer
+        gameInProgress = false;      // Prevent game actions
+        userGuessInput.disabled = true;
+        submitGuessBtn.disabled = true;
+        hintBtn.disabled = true; // Disable power-up buttons during tutorial
+        swapBtn.disabled = true;
+        skipBtn.disabled = true;
+
         tutorialTitle.textContent = tutorialSteps[currentTutorialStep].title;
         tutorialText.textContent = tutorialSteps[currentTutorialStep].text;
         tutorialModal.classList.remove('hidden'); // Show the modal
     } else {
-        // Tutorial is complete or skipped
+        // Tutorial is complete or skipped: resume the game
         tutorialModal.classList.add('hidden'); // Hide modal
         localStorage.setItem('wordMorphTutorialSeen', 'true'); // Mark tutorial as seen
-        window.initializeGameApp(null); // Explicitly start with daily puzzle after tutorial (no override)
+
+        // Resume game state
+        gameInProgress = true;
+        userGuessInput.disabled = false;
+        submitGuessBtn.disabled = false;
+        // Re-enable power-up buttons based on their counts (updatePowerUpDisplays does this)
+        updatePowerUpDisplays();
+        startTimer(); // Restart the timer (it will resume from where it left off if gameTimer > 0)
     }
 }
 
@@ -748,10 +774,23 @@ tutorialNextBtn.addEventListener('click', () => {
     showTutorialStep();
 });
 
+// Event listeners for tutorial buttons
+tutorialNextBtn.addEventListener('click', () => {
+    currentTutorialStep++;
+    showTutorialStep();
+});
+
 tutorialSkipBtn.addEventListener('click', () => {
+    // Skip tutorial: resume the game
     tutorialModal.classList.add('hidden'); // Hide modal
     localStorage.setItem('wordMorphTutorialSeen', 'true'); // Mark as seen
-    window.initializeGameApp(); // Start the game immediately
+
+    // Resume game state (same logic as showTutorialStep's else block)
+    gameInProgress = true;
+    userGuessInput.disabled = false;
+    submitGuessBtn.disabled = false;
+    updatePowerUpDisplays();
+    startTimer(); // Restart the timer
 });
 // --- Game Initialization Trigger (This is the Master Switch!) ---
 // This function will be called by index.html when both the DOM and Firebase are fully ready.
