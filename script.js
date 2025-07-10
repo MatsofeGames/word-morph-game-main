@@ -53,6 +53,7 @@ const tutorialText = document.getElementById('tutorial-text');
 const tutorialNextBtn = document.getElementById('tutorial-next-btn');
 const tutorialSkipBtn = document.getElementById('tutorial-skip-btn');
 const randomPuzzleBtn = document.getElementById('random-puzzle-btn');
+const howToPlayBtn = document.getElementById('how-to-play-btn');
 
 // --- 3. Game Dictionary (Crucial for Word Validation) ---
 const dictionary = [
@@ -416,26 +417,30 @@ function endGame(won) {
  */
 async function saveScore(userId, scoreData) {
     try {
-        // window.appId and window.firestoreDb are made global by the index.html script block
-        // window.appId defaults to `default-app-id` if not running in Canvas environment (fine for local testing)
         const scoresCollection = collection(window.firestoreDb, `artifacts/${window.appId}/public/data/wordMorphScores`);
+
+        // Generate the submissionId ONCE and use it consistently (CRITICAL CHANGE HERE)
+        const newSubmissionId = crypto.randomUUID();
 
         await addDoc(scoresCollection, {
             userId: userId,
             score: scoreData.score,
             chain: scoreData.chain,
-            time: scoreData.time,
-            puzzleId: scoreData.puzzleId,
-            date: scoreData.date,
-            difficulty: scoreData.difficulty,
-            submissionId: crypto.randomUUID(), // Unique ID for this specific submission
-            timestamp: new Date() // Firestore timestamp for server-side accuracy
+            time: gameTimer, // Use gameTimer directly as it's the final time
+            puzzleId: `${currentSeedWord}-${currentTargetWord}-${optimalPathLength}`, // Use current puzzle data
+            date: new Date().toISOString(),
+            difficulty: currentDifficulty,
+            submissionId: newSubmissionId, // Use the generated ID here
+            timestamp: new Date()
         });
+
         console.log("Score successfully written to Firestore!");
         const minutes = Math.floor(gameTimer / 60);
         const seconds = gameTimer % 60;
         window.showMessage(`Score ${currentScore} (Time: ${minutes}:${String(seconds).padStart(2, '0')}) saved and leaderboard updated!`, 5000);
-        loadLeaderboard(); // Reload leaderboard to display the updated scores
+
+        // Pass the SAME generated ID to loadLeaderboard (CRITICAL CHANGE HERE)
+        loadLeaderboard(newSubmissionId);
 
     } catch (e) {
         console.error("Error adding document to Firestore: ", e);
@@ -451,7 +456,7 @@ async function saveScore(userId, scoreData) {
  * This function uses the global `window.firestoreDb` and `window.appId`
  * which are set by the Firebase script in `index.html`.
  */
-async function loadLeaderboard() {
+async function loadLeaderboard(highlightSubmissionId = null) { // Added highlightSubmissionId parameter
     if (!leaderboardList) { // Defensive check: ensure HTML element exists
         console.error("Leaderboard HTML element not found.");
         return;
@@ -513,6 +518,10 @@ async function loadLeaderboard() {
                 const seconds = scoreData.time % 60;
                 const timeFormatted = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 
+                // Apply a special highlight if this is the score just submitted
+                if (highlightSubmissionId && scoreData.submissionId === highlightSubmissionId) {
+                    listItem.className += ' bg-blue-100 border-blue-500 border-l-4'; // Add distinct highlight classes
+                }
                 listItem.innerHTML = `
                     <span class="w-1/4">${index + 1}.</span>
                     <span class="w-1/2">${displayName}</span>
@@ -662,6 +671,12 @@ hintBtn.addEventListener('click', () => {
 });
 swapBtn.addEventListener('click', () => { window.showMessage("Swap power-up clicked (logic coming soon!)", 5000); });
 skipBtn.addEventListener('click', () => { window.showMessage("Skip power-up clicked (logic coming soon!)", 5000); });
+// Event listener for How to Play button (NEW CODE STARTS HERE)
+howToPlayBtn.addEventListener('click', () => {
+    currentTutorialStep = 0; // Reset tutorial to the first step
+    showTutorialStep();      // Show the tutorial modal
+});
+// NEW CODE ENDS HERE
 // Event listener for New Game button
 newGameBtn.addEventListener('click', () => {
     // Hide New Game button
