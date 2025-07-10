@@ -43,7 +43,7 @@
             /* Keep it near the top */
             left: 50%;
             transform: translateX(-50%);
-            background-color: rgba(25, 135, 84, 0.9);
+            background-color: rgba(59, 130, 246, 0.9);
             /* More vibrant green background */
             color: white;
             padding: 15px 30px;
@@ -64,6 +64,40 @@
             /* Ensure it's not too narrow */
             max-width: 80%;
             /* Don't let it get too wide on large screens */
+        }
+
+        /* CSS for animating new word chain items */
+        @keyframes fadeInSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .word-chain-item-enter {
+            animation: fadeInSlideUp 0.3s ease-out forwards;
+        }
+
+        /* Explicitly define animate-pulse for robustness */
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .5;
+            }
+        }
+
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
     </style>
 
@@ -210,6 +244,14 @@
                 class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-blue-700 transition duration-200 transform hover:scale-105">
                 Submit
             </button>
+            <button id="new-game-btn"
+                class="bg-gray-400 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-gray-500 transition duration-200 transform hover:scale-105 hidden">
+                New Game
+            </button>
+            <button id="random-puzzle-btn"
+                class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-indigo-700 transition duration-200 transform hover:scale-105 hidden">
+                Play Random Puzzle
+            </button>
         </div>
 
         <!-- Power-Up Buttons -->
@@ -252,3 +294,4 @@
 </body>
 
 </html>
+ 

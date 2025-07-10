@@ -17,6 +17,18 @@ let currentScore = 0;
 let gameTimer = 0;
 let timerInterval = null;
 let gameInProgress = false;
+// --- Curated List of Random Puzzles (for "Play Random Puzzle" feature) ---
+const RANDOM_PUZZLES = [
+    { start_word: "CAT", target_word: "DOG", optimal_path_length: 3, optimal_path: ["CAT", "COT", "COG", "DOG"], difficulty: "Easy" },
+    { start_word: "WAVE", target_word: "DIVE", optimal_path_length: 2, optimal_path: ["WAVE", "DAVE", "DIVE"], difficulty: "Easy" },
+    { start_word: "COLD", target_word: "WARM", optimal_path_length: 4, optimal_path: ["COLD", "CORD", "WORD", "WORM", "WARM"], difficulty: "Medium" },
+    { start_word: "PINE", target_word: "SALT", optimal_path_length: 4, optimal_path: ["PINE", "PANE", "SANE", "SALE", "SALT"], difficulty: "Medium" },
+    { start_word: "GAME", target_word: "HOME", optimal_path_length: 3, optimal_path: ["GAME", "DAME", "DOME", "HOME"], difficulty: "Easy" },
+    { start_word: "STAY", target_word: "PLAY", optimal_path_length: 2, optimal_path: ["STAY", "SLAY", "PLAY"], difficulty: "Easy" },
+    { start_word: "READ", target_word: "ROSE", optimal_path_length: 6, optimal_path: ["READ", "HEAD", "HELD", "HOLD", "HOLE", "ROLE", "ROSE"], difficulty: "Hard" },
+    { start_word: "HEMP", target_word: "FLIP", optimal_path_length: 6, optimal_path: ["HEMP", "HEAP", "HEAT", "FEAT", "FLAT", "FLAP", "FLIP"], difficulty: "Hard" },
+    { start_word: "BOWS", target_word: "LICK", optimal_path_length: 5, optimal_path: ["BOWS", "LOWS", "LOOS", "LOOK", "LOCK", "LICK"], difficulty: "Medium" }
+];
 
 // --- 2. Game Elements (Get References from HTML) ---
 const seedWordDisplay = document.getElementById('seed-word-display');
@@ -34,11 +46,13 @@ const hintBtn = document.getElementById('hint-btn');
 const swapBtn = document.getElementById('swap-btn');
 const skipBtn = document.getElementById('skip-btn');
 const leaderboardList = document.getElementById('leaderboard-list');
+const newGameBtn = document.getElementById('new-game-btn');
 const tutorialModal = document.getElementById('tutorial-modal');
 const tutorialTitle = document.getElementById('tutorial-title');
 const tutorialText = document.getElementById('tutorial-text');
 const tutorialNextBtn = document.getElementById('tutorial-next-btn');
 const tutorialSkipBtn = document.getElementById('tutorial-skip-btn');
+const randomPuzzleBtn = document.getElementById('random-puzzle-btn');
 
 // --- 3. Game Dictionary (Crucial for Word Validation) ---
 const dictionary = [
@@ -122,54 +136,67 @@ function isValidMorphStep(currentWord, nextWord) {
  * Initializes or resets the game state and UI for a new puzzle.
  * This is the main function that sets up a new game round.
  */
-async function initializeGame() {
+/**
+ * Initializes or resets the game state and UI for a new puzzle.
+ * This is the main function that sets up a new game round.
+ * @param {object|null} puzzleOverride An optional puzzle object to use instead of fetching from Firebase.
+ */
+async function initializeGame(puzzleOverride = null) {
     console.log("initializeGame() function started!");
 
-    // --- Load Today's Puzzle from Firebase --- (NEW CODE STARTS HERE)
-    // The current date in YYYY-MM-DD format to match Firebase Document ID
-    const today = new Date();
-    const todayString = today.getFullYear() + '-' +
-        String(today.getMonth() + 1).padStart(2, '0') + '-' +
-        String(today.getDate()).padStart(2, '0');
+    // --- Determine Puzzle Source: Override or Firebase Daily Puzzle ---
+    let selectedPuzzleData;
 
-    try {
-        // Use `window.firestoreDb` and `window.appId` which are global from index.html
-        const dailyPuzzlesRef = collection(window.firestoreDb, `dailyPuzzles`);
-        // Query for the document matching today's date (document ID is the date string)
-        const q = query(dailyPuzzlesRef, where("__name__", "==", todayString));
-        const querySnapshot = await getDocs(q); // Await the asynchronous fetch
+    if (puzzleOverride) { // If a puzzle object was passed directly (e.g., from "Play Random Puzzle" button)
+        selectedPuzzleData = puzzleOverride;
+        console.log(`Using override puzzle: ${selectedPuzzleData.start_word} to ${selectedPuzzleData.target_word}`);
+    } else { // Otherwise, try to load today's puzzle from Firebase
+        const today = new Date();
+        const todayString = today.getFullYear() + '-' +
+            String(today.getMonth() + 1).padStart(2, '0') + '-' +
+            String(today.getDate()).padStart(2, '0');
 
-        if (!querySnapshot.empty) {
-            const puzzleData = querySnapshot.docs[0].data(); // Get the data from the first (and only) doc
-            currentSeedWord = puzzleData.start_word;
-            currentTargetWord = puzzleData.target_word;
-            currentDifficulty = puzzleData.difficulty;
-            optimalPathLength = puzzleData.optimal_path_length;
-            window.currentOptimalPath = puzzleData.optimal_path; // Store the full optimal path
-            console.log(`Successfully loaded puzzle for ${todayString}: ${currentSeedWord} to ${currentTargetWord}`);
-        } else {
-            console.warn(`No puzzle found for ${todayString}. Using default puzzle.`);
-            // Fallback to a default puzzle if none found for today's date
-            currentSeedWord = "READ";
-            currentTargetWord = "ROSE";
-            currentDifficulty = "Medium";
-            optimalPathLength = 3; // Optimal for READ-ROSE
-            window.currentOptimalPath = ['READ', 'HEAD', 'HELD', 'HOLD', 'HOLE', 'ROLE', 'ROSE']; // Default optimal path
-            window.showMessage(`No puzzle for ${todayString}. Using default READ to ROSE.`, 5000);
+        try {
+            const dailyPuzzlesRef = collection(window.firestoreDb, `dailyPuzzles`);
+            const q = query(dailyPuzzlesRef, where("__name__", "==", todayString));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                selectedPuzzleData = querySnapshot.docs[0].data();
+                console.log(`Successfully loaded puzzle for ${todayString}: ${selectedPuzzleData.start_word} to ${selectedPuzzleData.target_word}`);
+            } else {
+                console.warn(`No puzzle found for ${todayString}. Using default puzzle.`);
+                selectedPuzzleData = { // Default fallback puzzle
+                    start_word: "READ",
+                    target_word: "ROSE",
+                    optimal_path_length: 6,
+                    optimal_path: ['READ', 'HEAD', 'HELD', 'HOLD', 'HOLE', 'ROLE', 'ROSE'],
+                    difficulty: "Medium"
+                };
+                window.showMessage(`No puzzle for ${todayString}. Using default READ to ROSE.`, 5000);
+            }
+        } catch (e) {
+            console.error("Error loading daily puzzle from Firebase: ", e);
+            window.showMessage("Error loading daily puzzle. Using default.", 5000);
+            selectedPuzzleData = { // Default fallback puzzle on error
+                start_word: "READ",
+                target_word: "ROSE",
+                optimal_path_length: 6,
+                optimal_path: ['READ', 'HEAD', 'HELD', 'HOLD', 'HOLE', 'ROLE', 'ROSE'],
+                difficulty: "Medium"
+            };
         }
-    } catch (e) {
-        console.error("Error loading daily puzzle from Firebase: ", e);
-        window.showMessage("Error loading daily puzzle. Using default.", 5000);
-        // Fallback to a default puzzle on error
-        currentSeedWord = "READ";
-        currentTargetWord = "ROSE";
-        currentDifficulty = "Medium";
-        optimalPathLength = 3;
     }
-    // --- End Load Today's Puzzle from Firebase --- (NEW CODE ENDS HERE)
+    // --- End Determine Puzzle Source ---
 
-    // --- Reset Game State for a New Round (REMAINING ORIGINAL CODE) ---
-    // Make sure optimalPathLength and currentSeedWord are set by the above block *before* this runs
+    // --- Apply Selected Puzzle Data to Game State Variables ---
+    currentSeedWord = selectedPuzzleData.start_word;
+    currentTargetWord = selectedPuzzleData.target_word;
+    currentDifficulty = selectedPuzzleData.difficulty;
+    optimalPathLength = selectedPuzzleData.optimal_path_length;
+    window.currentOptimalPath = selectedPuzzleData.optimal_path; // Store the full optimal path
+
+    // --- Reset Game State for a New Round ---
     currentChain = [currentSeedWord]; // Start chain with the seed word
     currentScore = 0; // Reset score
     gameTimer = 0; // Reset timer
@@ -209,7 +236,6 @@ async function initializeGame() {
     // Show initial puzzle message (will use loaded words)
     window.showMessage(`Today's puzzle: ${currentSeedWord} to ${currentTargetWord}!`, 5000);
     // loadLeaderboard is called by the main DOMContentLoaded trigger after full Firebase init
-    // (This line was previously `loadLeaderboard();` but should be commented/removed here as it's called globally)
 }
 
 // --- 6. Core Game Loop Functions ---
@@ -220,32 +246,58 @@ async function initializeGame() {
 function processGuess() {
     if (!gameInProgress) { // Prevent input if game is not active
         window.showMessage("Game not in progress. Refresh for a new puzzle.", 5000);
-        return;
+        return; // Stop function execution here
     }
 
-    const guess = userGuessInput.value.trim().toUpperCase();
+    const guess = userGuessInput.value.trim().toUpperCase(); // Get and clean player's input
     userGuessInput.value = ''; // Clear input field immediately
 
+    // --- Visual Feedback Logic ---
+    // Reset to default border style directly
+    userGuessInput.style.border = '2px solid #D1D5DB'; // Tailwind's border-2 border-gray-300 equivalent
+
+    // 1. Check if input is empty
     if (guess.length === 0) {
         window.showMessage("Please enter a word.", 5000);
-        return;
+        // No flash for empty input, just message
+        // Restore default border immediately for empty input
+        userGuessInput.classList.add('border-2', 'border-gray-300');
+        return; // Stop function execution here
     }
 
-    const lastWordInChain = currentChain[currentChain.length - 1];
+    const lastWordInChain = currentChain[currentChain.length - 1]; // Get the last word player entered
 
+    // 2. Check if word is in dictionary
     if (!isValidWord(guess)) {
+        // Apply strong red border flash directly
+        userGuessInput.style.border = '8px solid #EF4444'; // Tailwind's border-8 border-red-500 equivalent
+        setTimeout(() => {
+            userGuessInput.style.border = '2px solid #D1D5DB'; // Restore default border
+        }, 1000); // Flash for 1 second
         window.showMessage(`'${guess}' is not a valid word.`, 5000);
-        return;
+        return; // Stop function execution here
     }
 
+    // 3. Check if word follows morph rule (one letter different)
     if (!isValidMorphStep(lastWordInChain, guess)) {
+        // Apply strong red border flash directly
+        userGuessInput.style.border = '8px solid #EF4444'; // Tailwind's border-8 border-red-500 equivalent
+        setTimeout(() => {
+            userGuessInput.style.border = '2px solid #D1D5DB'; // Restore default border
+        }, 1000); // Flash for 1 second
         window.showMessage(`'${guess}' is not a valid morph from '${lastWordInChain}'. One letter, same position!`, 5000);
-        return;
+        return; // Stop function execution here
     }
 
-    // If all checks pass, add to chain
-    currentChain.push(guess);
-    renderWordChain();
+    // If all checks pass, the guess is valid!
+    // Apply strong green border flash directly
+    userGuessInput.style.border = '8px solid #22C55E'; // Tailwind's border-8 border-green-500 equivalent
+    setTimeout(() => {
+        userGuessInput.style.border = '2px solid #D1D5DB'; // Restore default border
+    }, 1000); // Flash for 1 second
+
+    currentChain.push(guess); // Add the valid word to the chain
+    renderWordChain(); // Update the visual display of the chain
 
     // Check for win condition
     if (guess === currentTargetWord) {
@@ -261,7 +313,7 @@ function renderWordChain() {
     currentChain.forEach(word => {
         const listItem = document.createElement('li');
         listItem.textContent = word;
-        listItem.className = 'py-1 text-gray-800 text-2xl md:text-3xl font-bold'; // Tailwind classes for styling
+        listItem.className = 'py-1 text-gray-800 text-2xl md:text-3xl font-bold word-chain-item-enter'; // Add animation class
         wordChainList.appendChild(listItem);
     });
     // Scroll to the bottom of the list for long chains
@@ -349,6 +401,12 @@ function endGame(won) {
         });
         window.showMessage("Score saved and leaderboard updated!", 5000); // Confirm saving
     }
+    // Show New Game button
+    newGameBtn.classList.remove('hidden');
+    newGameBtn.classList.add('block'); // Make it visible
+    // Also show the Random Puzzle button
+    randomPuzzleBtn.classList.remove('hidden');
+    randomPuzzleBtn.classList.add('block');
 }
 
 /**
@@ -604,6 +662,43 @@ hintBtn.addEventListener('click', () => {
 });
 swapBtn.addEventListener('click', () => { window.showMessage("Swap power-up clicked (logic coming soon!)", 5000); });
 skipBtn.addEventListener('click', () => { window.showMessage("Skip power-up clicked (logic coming soon!)", 5000); });
+// Event listener for New Game button
+newGameBtn.addEventListener('click', () => {
+    // Hide New Game button
+    newGameBtn.classList.add('hidden');
+    newGameBtn.classList.remove('block');
+
+    // Re-initialize the game (this will load today's puzzle again)
+    window.initializeGameApp();
+});
+// Event listener for Play Random Puzzle button (NEW CODE STARTS HERE)
+randomPuzzleBtn.addEventListener('click', () => {
+    // Hide both end-game buttons
+    newGameBtn.classList.add('hidden');
+    newGameBtn.classList.remove('block');
+    randomPuzzleBtn.classList.add('hidden');
+    randomPuzzleBtn.classList.remove('block');
+
+    // Select a random puzzle from the hardcoded list
+    const randomIndex = Math.floor(Math.random() * RANDOM_PUZZLES.length);
+    const selectedPuzzle = RANDOM_PUZZLES[randomIndex];
+
+    // Override current puzzle variables with the random puzzle
+    currentSeedWord = selectedPuzzle.start_word;
+    currentTargetWord = selectedPuzzle.target_word;
+    currentDifficulty = selectedPuzzle.difficulty;
+    optimalPathLength = selectedPuzzle.optimal_path_length;
+    window.currentOptimalPath = selectedPuzzle.optimal_path; // Important for smart hint
+
+    console.log(`Loading random puzzle: ${currentSeedWord} to ${currentTargetWord}`);
+    window.showMessage(`Playing a random puzzle: ${currentSeedWord} to ${currentTargetWord}!`, 5000);
+
+    // Re-initialize the game with the new random puzzle
+    window.initializeGameApp(selectedPuzzle);
+
+});
+// NEW CODE ENDS HERE
+
 
 // --- Game Initialization Trigger ---
 // This listener ensures the game initializes only AFTER the entire HTML document is parsed.
@@ -628,7 +723,7 @@ function showTutorialStep() {
         // Tutorial is complete or skipped
         tutorialModal.classList.add('hidden'); // Hide modal
         localStorage.setItem('wordMorphTutorialSeen', 'true'); // Mark tutorial as seen
-        window.initializeGameApp(); // Start the game after tutorial
+        window.initializeGameApp(null); // Explicitly start with daily puzzle after tutorial (no override)
     }
 }
 
@@ -646,10 +741,10 @@ tutorialSkipBtn.addEventListener('click', () => {
 // --- Game Initialization Trigger (This is the Master Switch!) ---
 // This function will be called by index.html when both the DOM and Firebase are fully ready.
 // It's exposed globally for index.html to call.
-window.initializeGameApp = () => {
+window.initializeGameApp = (puzzleToLoad = null) => { // Added puzzleToLoad parameter
     console.log("initializeGameApp() called from index.html.");
-    initializeGame(); // Call the main game setup function
-    loadLeaderboard(); // Load the leaderboard on game start
+    initializeGame(puzzleToLoad); // Pass the puzzleToLoad to initializeGame
+    loadLeaderboard();
 };
 
 // --- DOM Content Loaded Listener (Starts the Firebase & Game Readiness/Tutorial Check) ---
@@ -666,7 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Check if tutorial has been seen before using localStorage
             const tutorialSeen = localStorage.getItem('wordMorphTutorialSeen');
             if (tutorialSeen === 'true') {
-                window.initializeGameApp(); // Start the game directly if tutorial seen
+                window.initializeGameApp(null); // Explicitly start with daily puzzle (no override)
             } else {
                 currentTutorialStep = 0; // Reset to first step
                 showTutorialStep(); // Show tutorial if not seen
