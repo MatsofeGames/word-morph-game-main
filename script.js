@@ -17,6 +17,7 @@ let currentScore = 0;
 let gameTimer = 0;
 let timerInterval = null;
 let gameInProgress = false;
+let inTutorialMode = false; // New flag to track if tutorial was opened mid-game
 // --- Curated List of Random Puzzles (for "Play Random Puzzle" feature) ---
 // All puzzles are 4-letter words, with optimal path lengths of 2 or more.
 // Difficulty is based on optimal path length: Easy (2-3), Medium (4-5), Hard (6+)
@@ -47,7 +48,7 @@ const RANDOM_PUZZLES = [
     { start_word: "NEXT", target_word: "LIFT", optimal_path_length: 5, optimal_path: ["NEXT", "NEAT", "HEAT", "HEFT", "LEFT", "LIFT"], difficulty: "Medium" },
     { start_word: "WINE", target_word: "HOLE", optimal_path_length: 4, optimal_path: ["WINE", "DINE", "DONE", "DOLE", "HOLE"], difficulty: "Medium" },
     { start_word: "YIPS", target_word: "LOVE", optimal_path_length: 5, optimal_path: ["YIPS", "RIPS", "RIPE", "ROPE", "LOPE", "LOVE"], difficulty: "Medium" },
-    { start_word: "POEM", target_word: "YAPS", optimal_path_length: 8, optimal_path: ["POEM", "POET", "POST", "PAST", "PASS", "PATS", "RATS", "RAPS", "YAPS"], difficulty: "Hard" },
+    { start_word: "POEM", target_word: "YAPS", optimal_path_length: 7, optimal_path: ["POEM", "POET", "PORT", "PART", "CART", "CARS", "CAPS", "YAPS"], difficulty: "Hard" },
     { start_word: "PLOT", target_word: "CALM", optimal_path_length: 8, optimal_path: ["PLOT", "BLOT", "BOOT", "HOOT", "HOLT", "HALT", "HALL", "CALL", "CALM"], difficulty: "Hard" },
 ];
 
@@ -77,6 +78,8 @@ const randomPuzzleBtn = document.getElementById('random-puzzle-btn');
 const optimalPathDisplaySection = document.getElementById('optimal-path-display-section');
 const optimalPathList = document.getElementById('optimal-path-list');
 const howToPlayBtn = document.getElementById('how-to-play-btn');
+const replayPuzzleBtn = document.getElementById('replay-puzzle-btn');
+const viewSolutionBtn = document.getElementById('view-solution-btn'); // Add this new line
 
 // --- 3. Game Dictionary (Crucial for Word Validation) ---
 const dictionary = [
@@ -119,7 +122,7 @@ const dictionary = [
     "XRAY",
     "YACH", "YACK", "YAGI", "YAK", "YALE", "YAMS", "YANK", "YAP", "YAPS", "YARD", "YARN", "YAW", "YAWL", "YAWN", "YAWP", "YEAR", "YEAS", "YELL", "YEN", "YENS", "YEP", "YET", "YETI", "YIELD", "YELL", "YIP", "YIPS", "YOB", "YOD", "YOGI", "YOLK", "YOMP", "YON", "YORK", "YOU", "YOUR", "YOW", "YUAN", "YURT", "YUTZ",
     "ZAP", "ZEAL", "ZEB", "ZEN", "ZINC", "ZING", "ZIP", "ZIPS", "ZIT", "ZITS", "ZIZZ", "ZONE", "ZONK", "ZOO", "ZOOM", "ZOUK", "ZULU",
-    "PETS", "CATS", "PITA", "SITS", "MATS", "PALS", "MAPS", "CAPS", "POTS", "CUTS", "LATS", "ZAPS", "SANS", "CONS", "FINS", "BANS", "TARS", "CUPS", "DUCK", "PELT", "WELT", "SILT", "POPE", "MOPS", "CHAD"
+    "PETS", "CATS", "PITA", "SITS", "MATS", "PALS", "MAPS", "CAPS", "POTS", "CUTS", "LATS", "ZAPS", "SANS", "CONS", "FINS", "BANS", "TARS", "CUPS", "DUCK", "PELT", "WELT", "SILT", "POPE", "MOPS", "CHAD", "SULK", "PERK", "DORK", "FARE", "COWS", "FITS", "MITS", "DIRE", "MACK", "NOSY", "MUSK", "HUSK", "SHOP", "DADS", "PADS", "LADS", "FADS", "FOAL", "LONE", "SOOT", "HIDE", "KALE", "LIPS", "TUCK", "HOSE", "PIES"
 ].map(word => word.toUpperCase());
 
 // --- 4. Basic Word Validation Functions ---
@@ -176,6 +179,12 @@ async function initializeGame(puzzleOverride = null) {
     newGameBtn.classList.remove('block');
     randomPuzzleBtn.classList.add('hidden');
     randomPuzzleBtn.classList.remove('block');
+    // Hide replay button at the start of any new game
+    replayPuzzleBtn.classList.add('hidden');
+    replayPuzzleBtn.classList.remove('block');
+    // Hide View Solution button at the start of any new game
+    viewSolutionBtn.classList.add('hidden');
+    viewSolutionBtn.classList.remove('block');
 
     // --- Determine Puzzle Source: Override or Firebase Daily Puzzle ---
     let selectedPuzzleData;
@@ -384,24 +393,32 @@ function updatePowerUpDisplays() {
  * Starts the game timer.
  */
 /**
+/**
  * Starts or resumes the game timer.
+ * This function is called by initializeGame() and showTutorialStep().
  */
 function startTimer() {
     if (timerInterval) { // Clear any existing interval to prevent multiple timers
         clearInterval(timerInterval);
     }
-    // Only reset gameTimer to 0 if it's a completely new game (gameInProgress just set to true by initializeGame)
-    // Otherwise, it means we are resuming from a paused state (e.g., after tutorial)
-    if (currentChain.length === 1 && gameTimer === 0) { // Check if it's a fresh start
+
+    // CRITICAL CHANGE: Only reset gameTimer to 0 if it's a new game initialization
+    // (i.e., initializeGame() just set gameInProgress to true and chain is only seed word)
+    // This prevents resetting when resuming from a mid-game tutorial.
+    if (gameInProgress && currentChain.length === 1 && gameTimer === 0) {
         gameTimer = 0;
     }
-    timerDisplay.textContent = `${Math.floor(gameTimer / 60)}:${String(gameTimer % 60).padStart(2, '0')}`; // Ensure display is updated correctly on start/resume
+
+    // Ensure display is updated correctly on start/resume
+    const minutes = Math.floor(gameTimer / 60);
+    const seconds = gameTimer % 60;
+    timerDisplay.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
 
     timerInterval = setInterval(() => {
         gameTimer++;
-        const minutes = Math.floor(gameTimer / 60);
-        const seconds = gameTimer % 60;
-        timerDisplay.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
+        const currentMinutes = Math.floor(gameTimer / 60);
+        const currentSeconds = gameTimer % 60;
+        timerDisplay.textContent = `${currentMinutes}:${String(currentSeconds).padStart(2, '0')}`;
         if (gameTimer >= 180 && gameInProgress) { // 3 minutes = 180 seconds
             endGame(false); // Game over due to time
         }
@@ -433,14 +450,15 @@ function endGame(won) {
     console.log("Final Calculated Score (after endGame):", currentScore);
 
     // Call saveScore function if the player won
-    if (window.firestoreDb && window.currentUserId && won) {
+    // Call saveScore function if the game ended (win or lose)
+    if (window.firestoreDb && window.currentUserId) { // CRITICAL CHANGE: Removed '&& won'
         saveScore(window.currentUserId, {
             score: currentScore,
             chain: currentChain,
             time: gameTimer,
-            puzzleId: `${currentSeedWord}-${currentTargetWord}-${optimalPathLength}`, // Unique ID for today's puzzle variant
-            date: new Date().toISOString(), // Standard date format for sorting
-            difficulty: currentDifficulty // Save difficulty too
+            puzzleId: `${currentSeedWord}-${currentTargetWord}-${optimalPathLength}`,
+            date: new Date().toISOString(),
+            difficulty: currentDifficulty
         });
         window.showMessage("Score saved and leaderboard updated!", 5000); // Confirm saving
     }
@@ -450,25 +468,16 @@ function endGame(won) {
     // Also show the Random Puzzle button
     randomPuzzleBtn.classList.remove('hidden');
     randomPuzzleBtn.classList.add('block');
-    // Show Optimal Path Display Section
-    optimalPathDisplaySection.classList.remove('hidden');
-    optimalPathDisplaySection.classList.add('block'); // Make it visible
+    // Hide Optimal Path Display Section by default at game end, show button instead
+    optimalPathDisplaySection.classList.add('hidden');
+    optimalPathDisplaySection.classList.remove('block'); // Ensure it's hidden
 
-    // Render the optimal path
-    optimalPathList.innerHTML = ''; // Clear existing list
-    if (window.currentOptimalPath && window.currentOptimalPath.length > 0) {
-        window.currentOptimalPath.forEach(word => {
-            const listItem = document.createElement('li');
-            listItem.textContent = word;
-            listItem.className = 'py-1 text-gray-800 text-2xl md:text-3xl font-bold';
-            optimalPathList.appendChild(listItem);
-        });
-    } else {
-        const listItem = document.createElement('li');
-        listItem.textContent = 'Optimal path not available.';
-        listItem.className = 'py-1 text-gray-600 italic';
-        optimalPathList.appendChild(listItem);
-    }
+    // Show the View Solution button
+    viewSolutionBtn.classList.remove('hidden');
+    viewSolutionBtn.classList.add('block');
+    // Also show the Replay Puzzle button
+    replayPuzzleBtn.classList.remove('hidden');
+    replayPuzzleBtn.classList.add('block');
 }
 
 /**
@@ -613,8 +622,17 @@ function calculateFinalScore(won, chainLength, timeTaken, powerUpsUsed, optimalL
     console.log("--- Calculating Final Score ---");
     console.log("Input: won =", won, ", chainLength =", chainLength, ", timeTaken =", timeTaken, ", powerUpsUsed =", powerUpsUsed, ", optimalLength =", optimalLength);
 
+    // CRITICAL CHANGE: If game not won, return 0 immediately for final score
+    if (!won) {
+        console.log("Score Component: Final Score is 0 (Did not win).");
+        return 0;
+    }
+
     let score = 0;
     const playerTransitions = chainLength - 1; // Number of steps player took
+
+    // ... rest of the scoring logic (Completion Bonus, Efficiency, Power-Up, Time)
+    // These will now only run if 'won' is true.
 
     // 1. Completion Bonus (3 points)
     if (won) {
@@ -733,10 +751,23 @@ hintBtn.addEventListener('click', () => {
 swapBtn.addEventListener('click', () => { window.showMessage("Swap power-up clicked (logic coming soon!)", 5000); });
 skipBtn.addEventListener('click', () => { window.showMessage("Skip power-up clicked (logic coming soon!)", 5000); });
 // Event listener for How to Play button (NEW CODE STARTS HERE)
+// Event listener for How to Play button
+// Event listener for How to Play button (NEW CORRECTED CODE STARTS HERE)
 howToPlayBtn.addEventListener('click', () => {
-    currentTutorialStep = 0; // Reset tutorial to the first step
+    // Pause the game state before showing tutorial
+    clearInterval(timerInterval);
+    gameInProgress = false;
+    userGuessInput.disabled = true;
+    submitGuessBtn.disabled = true;
+    hintBtn.disabled = true; // Disable power-up buttons during tutorial
+    swapBtn.disabled = true;
+    skipBtn.disabled = true;
+
+    inTutorialMode = true; // Set flag: we are entering tutorial from mid-game
+    currentTutorialStep = 0; // Always start tutorial from step 0 when clicked manually
     showTutorialStep();      // Show the tutorial modal
 });
+// NEW CORRECTED CODE ENDS HERE
 // NEW CODE ENDS HERE
 // Event listener for New Game button
 newGameBtn.addEventListener('click', () => {
@@ -771,22 +802,72 @@ randomPuzzleBtn.addEventListener('click', () => {
 
     // Re-initialize the game with the new random puzzle
     window.initializeGameApp(selectedPuzzle);
-
 });
+
+// Event listener for Play Same Puzzle Again button (NEW CODE STARTS HERE)
+replayPuzzleBtn.addEventListener('click', () => {
+    // Hide all end-game buttons
+    newGameBtn.classList.add('hidden');
+    newGameBtn.classList.remove('block');
+    randomPuzzleBtn.classList.add('hidden');
+    randomPuzzleBtn.classList.remove('block');
+    replayPuzzleBtn.classList.add('hidden');
+    replayPuzzleBtn.classList.remove('block');
+
+    // Re-initialize the game with the *same* puzzle that was just played
+    // This puzzle data is already stored in currentSeedWord, currentTargetWord, etc.
+    const currentPuzzleData = {
+        start_word: currentSeedWord,
+        target_word: currentTargetWord,
+        optimal_path_length: optimalPathLength,
+        optimal_path: window.currentOptimalPath,
+        difficulty: currentDifficulty
+    };
+
+    console.log(`Replaying puzzle: ${currentSeedWord} to ${currentTargetWord}`);
+    window.showMessage(`Replaying: ${currentSeedWord} to ${currentTargetWord}!`, 5000);
+
+    // Re-initialize the game with the current puzzle data
+    window.initializeGameApp(currentPuzzleData);
+});
+// Event listener for View Solution button (NEW CODE STARTS HERE)
+viewSolutionBtn.addEventListener('click', () => {
+    // Hide the View Solution button itself
+    viewSolutionBtn.classList.add('hidden');
+    viewSolutionBtn.classList.remove('block');
+
+    // Show the Optimal Path Display Section and render the path
+    optimalPathDisplaySection.classList.remove('hidden');
+    optimalPathDisplaySection.classList.add('block');
+
+    optimalPathList.innerHTML = ''; // Clear existing list
+    if (window.currentOptimalPath && window.currentOptimalPath.length > 0) {
+        window.currentOptimalPath.forEach(word => {
+            const listItem = document.createElement('li');
+            listItem.textContent = word;
+            listItem.className = 'py-1 text-gray-800 text-2xl md:text-3xl font-bold';
+            optimalPathList.appendChild(listItem);
+        });
+    } else {
+        const listItem = document.createElement('li');
+        listItem.textContent = 'Optimal path not available.';
+        listItem.className = 'py-1 text-gray-600 italic';
+        optimalPathList.appendChild(listItem);
+    }
+});
+// NEW CODE ENDS HERE
+// NEW CODE ENDS HERE
 // NEW CODE ENDS HERE
 
 
-// --- Game Initialization Trigger ---
-// This listener ensures the game initializes only AFTER the entire HTML document is parsed.
-// It also checks if Firebase has finished its async initialization.
 // --- Tutorial Logic ---
 const tutorialSteps = [
-    { title: "Welcome to Word Morph!", text: "Your goal is to transform the START word into the TARGET word." },
+    { title: "Welcome to Word Morph!", text: "Your goal is to transform the START word into the TARGET word within the 3 minute time limit." }, // Added time limit mention
     { title: "How to Play (Rule 1)", text: "You can only change ONE letter at a time to create a new word." },
-    { title: "How to Play (Rule 2)", text: "Each new word MUST be a real word from our dictionary!" },
+    { title: "How to Play (Rule 2)", text: "Each new word MUST be a real word. Sorry if you enter a word that is not recognized. In this Beta version, our dictionary is still in development." },
     { title: "How to Play (Rule 3)", text: "Try to find the shortest path to earn more points (Optimal Path Length)." },
-    { title: "Power-Ups!", text: "Use your Hints, Swaps, and Skips wisely to help you out!" },
-    { title: "Leaderboard", text: "Your best scores will be saved to the leaderboard. Good luck!" }
+    { title: "Power-Ups!", text: "Use your Hint wisely to help you out!" }, // Corrected message
+    { title: "Leaderboard", text: "Your best scores will be saved to the leaderboard. Good luck!" } // Corrected message
 ];
 let currentTutorialStep = 0; // Tracks which step of the tutorial we are on
 
@@ -804,18 +885,22 @@ function showTutorialStep() {
         tutorialTitle.textContent = tutorialSteps[currentTutorialStep].title;
         tutorialText.textContent = tutorialSteps[currentTutorialStep].text;
         tutorialModal.classList.remove('hidden'); // Show the modal
-    } else {
-        // Tutorial is complete or skipped: resume the game
+        // Inside showTutorialStep()'s else block:
+    } else { // Tutorial is complete or skipped
         tutorialModal.classList.add('hidden'); // Hide modal
         localStorage.setItem('wordMorphTutorialSeen', 'true'); // Mark tutorial as seen
 
-        // Resume game state
-        gameInProgress = true;
-        userGuessInput.disabled = false;
-        submitGuessBtn.disabled = false;
-        // Re-enable power-up buttons based on their counts (updatePowerUpDisplays does this)
-        updatePowerUpDisplays();
-        startTimer(); // Restart the timer (it will resume from where it left off if gameTimer > 0)
+        if (inTutorialMode) { // If tutorial was opened mid-game (via "How to Play" button)
+            inTutorialMode = false; // Reset flag
+            // Resume game state (same as previous resume logic)
+            gameInProgress = true;
+            userGuessInput.disabled = false;
+            submitGuessBtn.disabled = false;
+            updatePowerUpDisplays();
+            startTimer(); // Restart the timer (it will resume from where it left off)
+        } else { // This was the first-time tutorial completion
+            window.initializeGameApp(null); // Properly initialize a new game
+        }
     }
 }
 
@@ -825,23 +910,22 @@ tutorialNextBtn.addEventListener('click', () => {
     showTutorialStep();
 });
 
-// Event listeners for tutorial buttons
-tutorialNextBtn.addEventListener('click', () => {
-    currentTutorialStep++;
-    showTutorialStep();
-});
-
+// Inside tutorialSkipBtn.addEventListener:
 tutorialSkipBtn.addEventListener('click', () => {
-    // Skip tutorial: resume the game
     tutorialModal.classList.add('hidden'); // Hide modal
     localStorage.setItem('wordMorphTutorialSeen', 'true'); // Mark as seen
 
-    // Resume game state (same logic as showTutorialStep's else block)
-    gameInProgress = true;
-    userGuessInput.disabled = false;
-    submitGuessBtn.disabled = false;
-    updatePowerUpDisplays();
-    startTimer(); // Restart the timer
+    if (inTutorialMode) { // If tutorial was opened mid-game
+        inTutorialMode = false; // Reset flag
+        // Resume game state
+        gameInProgress = true;
+        userGuessInput.disabled = false;
+        submitGuessBtn.disabled = false;
+        updatePowerUpDisplays();
+        startTimer(); // Restart the timer
+    } else { // This was the initial tutorial being skipped
+        window.initializeGameApp(null); // Properly initialize a new game
+    }
 });
 // --- Game Initialization Trigger (This is the Master Switch!) ---
 // This function will be called by index.html when both the DOM and Firebase are fully ready.

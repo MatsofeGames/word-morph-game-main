@@ -259,11 +259,15 @@
             </button>
             <button id="new-game-btn"
                 class="bg-gray-400 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-gray-500 transition duration-200 transform hover:scale-105 hidden">
-                New Game
+                Today's Puzzle
             </button>
             <button id="random-puzzle-btn"
                 class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-indigo-700 transition duration-200 transform hover:scale-105 hidden">
                 Play Random Puzzle
+            </button>
+            <button id="replay-puzzle-btn"
+                class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-green-700 transition duration-200 transform hover:scale-105 hidden">
+                Play Same Puzzle Again
             </button>
         </div>
 
@@ -299,6 +303,13 @@
                 class="flex flex-wrap justify-center items-center list-none p-0 gap-x-2 md:gap-x-4">
                 <!-- Optimal path words will be appended here by JavaScript -->
             </ul>
+        </div>
+        <!-- View Solution Button (appears at end of game, now centered) -->
+        <div class="flex justify-center mb-6"> <!-- New centering container -->
+            <button id="view-solution-btn"
+                class="bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-blue-800 transition duration-200 transform hover:scale-105 border-2 border-blue-900 hidden">
+                View Solution
+            </button>
         </div>
         <!-- Leaderboard Section -->
         <div class="bg-gray-50 p-6 rounded-lg shadow-md">
