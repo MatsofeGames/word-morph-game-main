@@ -97,6 +97,7 @@ const howToPlayBtn = document.getElementById('how-to-play-btn');
 const replayPuzzleBtn = document.getElementById('replay-puzzle-btn');
 const giveUpBtn = document.getElementById('give-up-btn');
 const viewSolutionBtn = document.getElementById('view-solution-btn'); // Add this new line
+const shareResultBtn = document.getElementById('share-result-btn');
 
 // --- 3. Game Dictionary (Crucial for Word Validation) ---
 const dictionary = [
@@ -139,7 +140,7 @@ const dictionary = [
     "XRAY",
     "YACH", "YACK", "YAGI", "YAK", "YALE", "YAMS", "YANK", "YAP", "YAPS", "YARD", "YARN", "YAW", "YAWL", "YAWN", "YAWP", "YEAR", "YEAS", "YELL", "YEN", "YENS", "YEP", "YET", "YETI", "YIELD", "YELL", "YIP", "YIPS", "YOB", "YOD", "YOGI", "YOLK", "YOMP", "YON", "YORK", "YOU", "YOUR", "YOW", "YUAN", "YURT", "YUTZ",
     "ZAP", "ZEAL", "ZEB", "ZEN", "ZINC", "ZING", "ZIP", "ZIPS", "ZIT", "ZITS", "ZIZZ", "ZONE", "ZONK", "ZOO", "ZOOM", "ZOUK", "ZULU",
-    "PETS", "CATS", "PITA", "SITS", "MATS", "PALS", "MAPS", "CAPS", "POTS", "CUTS", "LATS", "ZAPS", "SANS", "CONS", "FINS", "BANS", "TARS", "CUPS", "DUCK", "PELT", "WELT", "SILT", "POPE", "MOPS", "CHAD", "SULK", "PERK", "DORK", "FARE", "COWS", "FITS", "MITS", "DIRE", "MACK", "NOSY", "MUSK", "HUSK", "SHOP", "DADS", "PADS", "LADS", "FADS", "FOAL", "LONE", "SOOT", "HIDE", "KALE", "LIPS", "TUCK", "HOSE", "PIES", "HULK", "BILK", "TOCK", "BEET", "LEST", "MELD", "YORE", "HITS", "BETS", "GETS", "NETS", "VETS", "LOTS", "COTS", "BOTS", "JOTS", "LOTS", "ROTS", "TOTS", "HITS", "JETS", "RILE", "TUSH", "DOVE", "LINT", "CZAR", "BAYS", "COOT", "CLOP", "HOOP", "SLAP", "GALS", "PAYS", "PUNS",
+    "PETS", "CATS", "PITA", "SITS", "MATS", "PALS", "MAPS", "CAPS", "POTS", "CUTS", "LATS", "ZAPS", "SANS", "CONS", "FINS", "BANS", "TARS", "CUPS", "DUCK", "PELT", "WELT", "SILT", "POPE", "MOPS", "CHAD", "SULK", "PERK", "DORK", "FARE", "COWS", "FITS", "MITS", "DIRE", "MACK", "NOSY", "MUSK", "HUSK", "SHOP", "DADS", "PADS", "LADS", "FADS", "FOAL", "LONE", "SOOT", "HIDE", "KALE", "LIPS", "TUCK", "HOSE", "PIES", "HULK", "BILK", "TOCK", "BEET", "LEST", "MELD", "YORE", "HITS", "BETS", "GETS", "NETS", "VETS", "LOTS", "COTS", "BOTS", "JOTS", "LOTS", "ROTS", "TOTS", "HITS", "JETS", "RILE", "TUSH", "DOVE", "LINT", "CZAR", "BAYS", "COOT", "CLOP", "HOOP", "SLAP", "GALS", "PAYS", "PUNS", "WEEP", "WELP"
 ].map(word => word.toUpperCase());
 
 // --- 4. Basic Word Validation Functions ---
@@ -188,6 +189,9 @@ function isValidMorphStep(currentWord, nextWord) {
  */
 async function initializeGame(puzzleOverride = null) {
     console.log("initializeGame() function started!");
+    // Hide Share Result button at the start of any new game
+    shareResultBtn.classList.add('hidden');
+    shareResultBtn.classList.remove('block');
     // Hide Optimal Path Display Section at the start of a new game
     optimalPathDisplaySection.classList.add('hidden');
     optimalPathDisplaySection.classList.remove('block');
@@ -524,6 +528,9 @@ function endGame(won) {
     // Also show the Replay Puzzle button
     replayPuzzleBtn.classList.remove('hidden');
     replayPuzzleBtn.classList.add('block');
+    // Show Share Result button
+    shareResultBtn.classList.remove('hidden');
+    shareResultBtn.classList.add('block');
     // Hide Give Up button
     giveUpBtn.classList.add('hidden');
 }
@@ -910,6 +917,63 @@ viewSolutionBtn.addEventListener('click', () => {
         optimalPathList.appendChild(listItem);
     }
 });
+// Event listener for Share Result button (NEW CODE STARTS HERE)
+shareResultBtn.addEventListener('click', async () => {
+    const gameUrl = window.location.href; // Get the current game URL
+
+    // Construct the shareable message (UPDATED LOGIC)
+    let shareMessage = `Word Morph Daily Puzzle!\n`;
+    shareMessage += `Puzzle: ${currentSeedWord} to ${currentTargetWord}\n`; // Removed Length
+    shareMessage += `My Chain Length: ${currentChain.length - 1} Words\n`; // Subtract 1 for transitions
+    shareMessage += `My Score: ${currentScore} in ${Math.floor(gameTimer / 60)}:${String(gameTimer % 60).padStart(2, '0')} seconds!\n`;
+    shareMessage += `Can you beat it? Play here: ${gameUrl}`; // Removed My Chain
+
+    // Attempt to use the Web Share API (native sharing dialog)
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: 'Word Morph Daily Puzzle',
+                text: shareMessage,
+
+            });
+            console.log('Shared successfully!');
+            window.showMessage('Shared successfully!', 3000);
+        } catch (error) {
+            // User cancelled share, or unsupported share target
+            if (error.name !== 'AbortError') {
+                console.error('Error sharing:', error);
+                window.showMessage('Failed to share. Trying to copy to clipboard.', 3000);
+                copyToClipboard(shareMessage); // Fallback to clipboard
+            } else {
+                window.showMessage('Sharing cancelled.', 2000);
+            }
+        }
+    } else {
+        // Fallback for browsers that don't support Web Share API (e.g., most desktops)
+        console.log('Web Share API not supported. Copying to clipboard.');
+        window.showMessage('Web Share API not supported. Copied to clipboard!', 3000);
+        copyToClipboard(shareMessage); // Fallback to clipboard
+    }
+});
+
+// Helper function to copy text to clipboard (reliable fallback)
+function copyToClipboard(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed'; // Avoid scrolling to bottom
+    textarea.style.opacity = '0'; // Hide it visually
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand('copy');
+        window.showMessage('Score details copied to clipboard!', 3000);
+    } catch (err) {
+        console.error('Failed to copy text: ', err);
+        window.showMessage('Failed to copy to clipboard. Please try manually.', 3000);
+    }
+    document.body.removeChild(textarea);
+}
+// NEW CODE ENDS HERE
 // NEW CODE ENDS HERE
 // NEW CODE ENDS HERE
 // NEW CODE ENDS HERE
