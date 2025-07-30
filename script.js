@@ -140,7 +140,7 @@ const dictionary = [
     "XRAY",
     "YACH", "YACK", "YAGI", "YAK", "YALE", "YAMS", "YANK", "YAP", "YAPS", "YARD", "YARN", "YAW", "YAWL", "YAWN", "YAWP", "YEAR", "YEAS", "YELL", "YEN", "YENS", "YEP", "YET", "YETI", "YIELD", "YELL", "YIP", "YIPS", "YOB", "YOD", "YOGI", "YOLK", "YOMP", "YON", "YORK", "YOU", "YOUR", "YOW", "YUAN", "YURT", "YUTZ",
     "ZAP", "ZEAL", "ZEB", "ZEN", "ZINC", "ZING", "ZIP", "ZIPS", "ZIT", "ZITS", "ZIZZ", "ZONE", "ZONK", "ZOO", "ZOOM", "ZOUK", "ZULU",
-    "PETS", "CATS", "PITA", "SITS", "MATS", "PALS", "MAPS", "CAPS", "POTS", "CUTS", "LATS", "ZAPS", "SANS", "CONS", "FINS", "BANS", "TARS", "CUPS", "DUCK", "PELT", "WELT", "SILT", "POPE", "MOPS", "CHAD", "SULK", "PERK", "DORK", "FARE", "COWS", "FITS", "MITS", "DIRE", "MACK", "NOSY", "MUSK", "HUSK", "SHOP", "DADS", "PADS", "LADS", "FADS", "FOAL", "LONE", "SOOT", "HIDE", "KALE", "LIPS", "TUCK", "HOSE", "PIES", "HULK", "BILK", "TOCK", "BEET", "LEST", "MELD", "YORE", "HITS", "BETS", "GETS", "NETS", "VETS", "LOTS", "COTS", "BOTS", "JOTS", "LOTS", "ROTS", "TOTS", "HITS", "JETS", "RILE", "TUSH", "DOVE", "LINT", "CZAR", "BAYS", "COOT", "CLOP", "HOOP", "SLAP", "GALS", "PAYS", "PUNS", "WEEP", "WELP"
+    "PETS", "CATS", "PITA", "SITS", "MATS", "PALS", "MAPS", "CAPS", "POTS", "CUTS", "LATS", "ZAPS", "SANS", "CONS", "FINS", "BANS", "TARS", "CUPS", "DUCK", "PELT", "WELT", "SILT", "POPE", "MOPS", "CHAD", "SULK", "PERK", "DORK", "FARE", "COWS", "FITS", "MITS", "DIRE", "MACK", "NOSY", "MUSK", "HUSK", "SHOP", "DADS", "PADS", "LADS", "FADS", "FOAL", "LONE", "SOOT", "HIDE", "KALE", "LIPS", "TUCK", "HOSE", "PIES", "HULK", "BILK", "TOCK", "BEET", "LEST", "MELD", "YORE", "HITS", "BETS", "GETS", "NETS", "VETS", "LOTS", "COTS", "BOTS", "JOTS", "LOTS", "ROTS", "TOTS", "HITS", "JETS", "RILE", "TUSH", "DOVE", "LINT", "CZAR", "BAYS", "COOT", "CLOP", "HOOP", "SLAP", "GALS", "PAYS", "PUNS", "WEEP", "WELP", "TOLL"
 ].map(word => word.toUpperCase());
 
 // --- 4. Basic Word Validation Functions ---
@@ -722,32 +722,34 @@ function calculateFinalScore(won, chainLength, timeTaken, powerUpsUsed, optimalL
         console.log("Score Component: Efficiency Bonus (+0) - Game not won.");
     }
 
-    // 3. Power-Up Usage (2 points)
-    // Now correctly uses the powerUpsUsedThisGame object
-    const totalPowerUpsUsed = powerUpsUsed.hint + powerUpsUsed.swap + powerUpsUsed.skip;
+    // 3. Power-Up Usage (1 point) - Adjusted for single active power-up
+    const totalPowerUpsUsed = powerUpsUsed.hint + powerUpsUsed.swap + powerUpsUsed.skip; // Still track all, but score only on hint for now
     console.log("Power-Up Check: Hint Used =", powerUpsUsed.hint, ", Swap Used =", powerUpsUsed.swap, ", Skip Used =", powerUpsUsed.skip, ", Total Used =", totalPowerUpsUsed);
-    if (totalPowerUpsUsed === 0) {
-        score += 2;
-        console.log("Score Component: Power-Up Usage (+2)");
-    } else if (totalPowerUpsUsed === 1) {
+    if (powerUpsUsed.hint === 0) { // Only check if hint was used
         score += 1;
-        console.log("Score Component: Power-Up Usage (+1)");
-    } else { // 2 or more
-        score += 0;
-        console.log("Score Component: Power-Up Usage (+0)");
-    }
-
-    // 4. Time Bonus (1 point)
-    console.log("Time Check: Time Taken =", timeTaken, "seconds.");
-    if (timeTaken < 60) { // Under 1 minute
-        score += 1;
-        console.log("Score Component: Time Bonus (+1)");
-    } else if (timeTaken < 120) { // Under 2 minutes
-        score += 0.5;
-        console.log("Score Component: Time Bonus (+0.5)");
+        console.log("Score Component: Power-Up Usage (+1) - No hints used.");
     } else {
         score += 0;
-        console.log("Score Component: Time Bonus (+0)");
+        console.log("Score Component: Power-Up Usage (+0) - Hint(s) used.");
+    }
+
+    // 4. Time Bonus (2 points) - More granular
+    console.log("Time Check: Time Taken =", timeTaken, "seconds.");
+    if (timeTaken < 60) { // Under 1 minute
+        score += 2;
+        console.log("Score Component: Time Bonus (+2) - Under 60 seconds.");
+    } else if (timeTaken < 90) { // Under 1 minute 30 seconds
+        score += 1.5;
+        console.log("Score Component: Time Bonus (+1.5) - Under 90 seconds.");
+    } else if (timeTaken < 120) { // Under 2 minutes
+        score += 1;
+        console.log("Score Component: Time Bonus (+1) - Under 120 seconds.");
+    } else if (timeTaken < 150) { // Under 2 minutes 30 seconds
+        score += 0.5;
+        console.log("Score Component: Time Bonus (+0.5) - Under 150 seconds.");
+    } else { // Over 2 minutes 30 seconds
+        score += 0;
+        console.log("Score Component: Time Bonus (+0) - Over 150 seconds.");
     }
 
     console.log("--- End Score Calculation ---");
