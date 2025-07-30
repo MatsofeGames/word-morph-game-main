@@ -281,7 +281,7 @@ async function initializeGame(puzzleOverride = null) {
     };
 
     // Give player initial hint for the day (or based on daily allowance)
-    powerUpCounts.hint = 1; // Give 1 hint to start
+    powerUpCounts.hint = 2; // Give 2 hint to start
 
     // --- Update UI Elements ---
     seedWordDisplay.textContent = currentSeedWord;
@@ -688,11 +688,12 @@ function calculateFinalScore(won, chainLength, timeTaken, powerUpsUsed, optimalL
     // ... rest of the scoring logic (Completion Bonus, Efficiency, Power-Up, Time)
     // These will now only run if 'won' is true.
 
-    // 1. Completion Bonus (3 points)
+    // 1. Completion Bonus (2 points) - Adjusted
     if (won) {
-        score += 3;
-        console.log("Score Component: Completion Bonus (+3)");
+        score += 2; // Changed from 3 to 2 points
+        console.log("Score Component: Completion Bonus (+2)");
     } else {
+        score += 0;
         console.log("Score Component: Completion Bonus (+0) - Did not win.");
     }
 
@@ -722,15 +723,18 @@ function calculateFinalScore(won, chainLength, timeTaken, powerUpsUsed, optimalL
         console.log("Score Component: Efficiency Bonus (+0) - Game not won.");
     }
 
-    // 3. Power-Up Usage (1 point) - Adjusted for single active power-up
-    const totalPowerUpsUsed = powerUpsUsed.hint + powerUpsUsed.swap + powerUpsUsed.skip; // Still track all, but score only on hint for now
+    // 3. Power-Up Usage (2 points) - More granular
+    const totalPowerUpsUsed = powerUpsUsed.hint + powerUpsUsed.swap + powerUpsUsed.skip;
     console.log("Power-Up Check: Hint Used =", powerUpsUsed.hint, ", Swap Used =", powerUpsUsed.swap, ", Skip Used =", powerUpsUsed.skip, ", Total Used =", totalPowerUpsUsed);
-    if (powerUpsUsed.hint === 0) { // Only check if hint was used
+    if (powerUpsUsed.hint === 0) { // 0 hints used
+        score += 2;
+        console.log("Score Component: Power-Up Usage (+2) - No hints used.");
+    } else if (powerUpsUsed.hint === 1) { // 1 hint used
         score += 1;
-        console.log("Score Component: Power-Up Usage (+1) - No hints used.");
-    } else {
+        console.log("Score Component: Power-Up Usage (+1) - One hint used.");
+    } else { // 2 or more hints used
         score += 0;
-        console.log("Score Component: Power-Up Usage (+0) - Hint(s) used.");
+        console.log("Score Component: Power-Up Usage (+0) - Two or more hints used.");
     }
 
     // 4. Time Bonus (2 points) - More granular
