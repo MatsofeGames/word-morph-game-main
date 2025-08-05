@@ -5,9 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Word Morph - Daily Puzzle</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Inter Font (from Google Fonts) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -101,12 +99,8 @@
         }
     </style>
 
-    <!-- Your game's main JavaScript logic -->
-    <!-- This script MUST load BEFORE the Firebase initialization script -->
     <script type="module" src="./script.js"></script>
 
-    <!-- Firebase SDKs (put this last in HEAD to ensure everything else is loaded) -->
-    <!-- This script loads Firebase and sets global variables. script.js will then check for readiness. -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -183,9 +177,7 @@
 
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center py-8">
 
-    <!-- Message Box for user feedback -->
     <div id="message-box" class="shadow-lg"></div>
-    <!-- Tutorial Modal HTML (Hidden by default) -->
     <div id="tutorial-modal"
         class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-lg shadow-xl p-6 md:p-8 w-11/12 max-w-md text-center">
@@ -204,25 +196,76 @@
         </div>
     </div>
 
-    <!-- The main application container -->
+    <div id="fun-fact-modal"
+        class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+        <div
+            class="bg-white p-8 rounded-lg shadow-xl w-11/12 md:w-1/2 lg:w-1/3 mx-auto flex flex-col items-center text-center relative">
+            <h2 id="modal-title" class="text-3xl font-bold mb-4 text-gray-800"></h2>
+            <div id="game-results" class="mb-4">
+                <p class="text-lg text-gray-700">Final Score: <span id="final-score-modal" class="font-bold"></span></p>
+                <p class="text-lg text-gray-700">Time: <span id="final-time-modal" class="font-bold"></span></p>
+            </div>
+            <p id="fun-fact-text" class="text-lg text-gray-600 mb-6"></p>
+            <div id="leaderboard-snippet-container" class="mt-4 mb-6 w-full text-left">
+                <h3 class="text-xl font-bold mb-2 text-center">Leaderboard</h3>
+                <ul id="leaderboard-snippet-list" class="space-y-1">
+                </ul>
+            </div>
+            <div class="flex flex-col space-y-4 w-full">
+                <button id="share-results-btn-modal"
+                    class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300">
+                    Share Results
+                </button>
+                <button id="view-solution-btn-modal"
+                    class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300">
+                    View Solution
+                </button>
+                <button id="play-today-puzzle-btn-modal"
+                    class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300">
+                    Today's Puzzle
+                </button>
+                <button id="replay-puzzle-btn-modal"
+                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300">
+                    Play Same Puzzle Again
+                </button>
+                <button id="play-random-puzzle-btn-modal"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300">
+                    Play Random Puzzle
+                </button>
+                <button id="close-modal-btn" class="text-gray-500 hover:text-gray-700 font-bold mt-2">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="solution-modal"
+        class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-11/12 md:w-1/2 lg:w-1/3 mx-auto relative">
+            <button id="close-solution-modal-btn"
+                class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition duration-300">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <h2 class="text-3xl font-bold mb-4 text-gray-800 text-center">Optimal Solution</h2>
+            <ul id="solution-list" class="space-y-1 text-center">
+            </ul>
+        </div>
+    </div>
+
     <div id="app" class="w-full max-w-4xl bg-white rounded-lg shadow-xl p-6 md:p-8">
-        <!-- Header Section: Title and How to Play Button (Right-aligned with centered title) -->
         <div class="flex items-center justify-between mb-6">
-            <!-- Invisible spacer on the left to balance the button on the right -->
-            <!-- The width (w-28, md:w-32) is an estimate of the button's width to ensure perfect centering of the title -->
             <div class="w-28 md:w-32"></div>
 
-            <!-- Main Title, centered within the available space between the spacer and the button -->
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800 text-center">Word Morph</h1>
 
-            <!-- How to Play Button, pushed to the far right by justify-between -->
             <button id="how-to-play-btn"
                 class="bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg shadow-sm hover:bg-gray-300 transition duration-200 transform hover:scale-105 text-sm">
                 How to Play
             </button>
         </div>
 
-        <!-- Main Puzzle Area -->
         <div class="flex flex-col items-center justify-center space-y-4 mb-6">
             <div class="flex flex-col items-center space-y-2">
                 <span class="text-lg text-gray-600">Seed Word:</span>
@@ -239,16 +282,13 @@
                     class="font-semibold">N/A</span></div>
         </div>
 
-        <!-- Word Chain Display Area -->
         <div class="mb-6 bg-gray-50 p-4 rounded-lg shadow-inner max-h-60 overflow-y-auto">
             <h2 class="text-xl font-semibold text-gray-700 mb-3 text-center">Your Chain</h2>
             <ul id="word-chain-list"
                 class="flex flex-wrap justify-center items-center list-none p-0 gap-x-2 md:gap-x-4">
-                <!-- Chain words will be appended here by JavaScript -->
             </ul>
         </div>
 
-        <!-- User Input Section -->
         <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-4 mb-6">
             <input type="text" id="user-guess-input"
                 class="w-full md:w-64 px-4 py-2 border-2 border-gray-300 rounded-lg text-xl text-center uppercase focus:outline-none focus:border-blue-500 transition duration-200"
@@ -275,11 +315,10 @@
             </button>
             <button id="share-result-btn"
                 class="bg-purple-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-purple-700 transition duration-200 transform hover:scale-105 hidden mt-2 md:mt-0">
-                Share Result 🏆
+                Share Results 🏆
             </button>
         </div>
 
-        <!-- Power-Up Buttons -->
         <div class="flex flex-wrap justify-center gap-4 mb-6">
             <button id="hint-btn"
                 class="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-yellow-600 transition duration-200 transform hover:scale-105 opacity-50 cursor-not-allowed"
@@ -298,40 +337,20 @@
             </button>
         </div>
 
-        <!-- Score and Timer Display -->
         <div class="flex justify-around items-center mb-6 text-xl font-semibold text-gray-700">
             <span>Score: <span id="current-score">0</span></span>
             <span>Time: <span id="timer-display">0:00</span></span>
         </div>
 
-        <!-- Optimal Path Display Section (Hidden by default) -->
-        <div id="optimal-path-display-section" class="bg-gray-100 p-4 rounded-lg shadow-inner mb-6 hidden">
-            <h2 class="text-xl font-semibold text-gray-700 mb-3 text-center">Optimal Solution:</h2>
-            <ul id="optimal-path-list"
-                class="flex flex-wrap justify-center items-center list-none p-0 gap-x-2 md:gap-x-4">
-                <!-- Optimal path words will be appended here by JavaScript -->
-            </ul>
-        </div>
-        <!-- View Solution Button (appears at end of game, now centered) -->
-        <div class="flex justify-center mb-6"> <!-- New centering container -->
-            <button id="view-solution-btn"
-                class="bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-blue-800 transition duration-200 transform hover:scale-105 border-2 border-blue-900 hidden">
-                View Solution
-            </button>
-        </div>
-        <!-- Leaderboard Section -->
         <div class="bg-gray-50 p-6 rounded-lg shadow-md">
             <h2 class="text-xl font-bold text-gray-800 mb-4 text-center">Today's Top Scores</h2>
             <ul id="leaderboard-list" class="list-none p-0 space-y-2">
-                <!-- Leaderboard entries will be loaded here by JavaScript -->
             </ul>
         </div>
     </div>
 
-    <!-- Chart.js CDN (for potential future charts like score trends) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
 
 </body>
 
 </html>
- 

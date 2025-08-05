@@ -12,6 +12,70 @@
 
 import collections # Used for deque, an efficient double-ended queue
 import random      # Used for selecting random words
+import requests    # Used for making HTTP requests to the Gemini API
+import json        # Used for working with JSON data
+import time        # Used for implementing exponential backoff
+
+# --- Gemini API Configuration ---
+# IMPORTANT: Replace "YOUR_GEMINI_API_KEY" with your actual Gemini API Key.
+# You can get one from Google AI Studio (ai.google.dev)
+GEMINI_API_KEY = "AIzaSyCBzMlOHn3qeq2wNajoXh5t7i3NrjSLX80"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=" + GEMINI_API_KEY
+
+# --- 1.2. Fun Fact Generation Function (Uses Gemini API) ---
+
+def generate_fun_fact_from_api(word, max_retries=3, backoff_factor=1.0):
+    """
+    Generates a concise fun fact about a given word using the Gemini API.
+    Includes exponential backoff for API rate limits.
+    """
+    prompt = (
+        f"Provide one very short, interesting, and verifiable fun fact about the word '{word.upper()}', "
+        f"but do not include its definition. Limit the response to a single sentence."
+    )
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "contents": [
+            {
+                "parts": [{"text": prompt}]
+            }
+        ]
+    }
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(GEMINI_API_URL, headers=headers, data=json.dumps(data))
+            response.raise_for_status()  # This will raise an HTTPError for bad responses
+            response_json = response.json()
+            
+            # The structure of the response might vary slightly, so we use a safe getter
+            fun_fact_text = response_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text')
+            
+            if fun_fact_text:
+                return fun_fact_text.strip()
+            
+            print(f"  Warning: API returned no text. Retrying... (Attempt {attempt + 1})")
+
+        except requests.exceptions.RequestException as e:
+            print(f"  Error calling Gemini API: {e}")
+            if attempt < max_retries - 1:
+                sleep_time = backoff_factor * (2 ** attempt)
+                print(f"  Retrying in {sleep_time} seconds...")
+                time.sleep(sleep_time)
+            else:
+                print("  Max retries reached. Returning default fun fact.")
+                break # Exit the loop after max retries
+        except (json.JSONDecodeError, IndexError, KeyError) as e:
+            print(f"  Error parsing API response: {e}. Retrying... (Attempt {attempt + 1})")
+            if attempt < max_retries - 1:
+                sleep_time = backoff_factor * (2 ** attempt)
+                print(f"  Retrying in {sleep_time} seconds...")
+                time.sleep(sleep_time)
+            else:
+                print("  Max retries reached. Returning default fun fact.")
+                break # Exit the loop after max retries
+
+    return "No fun fact available for this word." # Default fallback
 
 # --- 1. Game Dictionary (Must match JavaScript dictionary in script.js) ---
 # This list contains common 3- and 4-letter English words.
@@ -37,7 +101,7 @@ DICTIONARY = [
     "EACH", "EARL", "EARN", "EARS", "EASE", "EAST", "EASY", "EATH", "EATS", "EAUX", "EAVE", "EBBS", "EBON", "ECHE", "ECHO", "ECHT", "ECRU", "ECUS", "EDDO", "EDDY", "EDGE", "EDGY", "EDHS", "EDIT", "EELS", "EELY", "EERY", "EFFS", "EFTS", "EGAD", "EGAL", "EGER", "EGGS", "EGGY", "EGIS", "EGOS", "EIDE", "EKED", "EKES", "ELAN", "ELDS", "ELHI", "ELKS", "ELLS", "ELMS", "ELMY", "ELSE", "EMES", "EMEU", "EMIC", "EMIR", "EMIT", "EMMY", "EMUS", "EMYD", "ENDS", "ENGS", "ENOL", "ENOW", "ENUF", "ENVY", "EONS", "EPEE", "EPHA", "EPIC", "EPOS", "ERAS", "ERGO", "ERGS", "ERNE", "ERNS", "EROS", "ERRS", "ERST", "ESES", "ESNE", "ESPY", "ETAS", "ETCH", "ETHS", "ETIC", "ETNA", "ETUI", "EURO", "EVEN", "EVER", "EVES", "EVIL", "EWER", "EWES", "EXAM", "EXEC", "EXED", "EXES", "EXIT", "EXON", "EXPO", "EYAS", "EYED", "EYEN", "EYER", "EYES", "EYNE", "EYRA", "EYRE", "EYRY",
     "FABS", "FACE", "FACT", "FADE", "FADO", "FADS", "FAGS", "FAIL", "FAIN", "FAIR", "FAKE", "FALL", "FALX", "FAME", "FANE", "FANG", "FANO", "FANS", "FARD", "FARE", "FARL", "FARM", "FARO", "FASH", "FAST", "FATE", "FATS", "FAUN", "FAUX", "FAVA", "FAVE", "FAWN", "FAYS", "FAZE", "FEAL", "FEAR", "FEAT", "FECK", "FEDS", "FEEB", "FEED", "FEEL", "FEES", "FEET", "FEHS", "FELL", "FELT", "FEME", "FEMS", "FEND", "FENS", "FEOD", "FERE", "FERN", "FESS", "FEST", "FETA", "FETE", "FETS", "FEUD", "FEUS", "FIAR", "FIAT", "FIBS", "FICE", "FICO", "FIDO", "FIDS", "FIEF", "FIFE", "FIGS", "FILA", "FILE", "FILL", "FILM", "FILO", "FILS", "FIND", "FINE", "FINK", "FINO", "FINS", "FIRE", "FIRM", "FIRN", "FIRS", "FISC", "FISH", "FIST", "FITS", "FIVE", "FIXT", "FIZZ", "FLAB", "FLAG", "FLAK", "FLAM", "FLAN", "FLAP", "FLAT", "FLAW", "FLAX", "FLAY", "FLEA", "FLED", "FLEE", "FLEW", "FLEX", "FLEY", "FLIC", "FLIM", "FLIP", "FLIR", "FLIT", "FLOC", "FLOE", "FLOG", "FLOP", "FLOW", "FLUB", "FLUE", "FLUS", "FLUX", "FOAL", "FOAM", "FOBS", "FOCI", "FOES", "FOGS", "FOGY", "FOHN", "FOIL", "FOIN", "FOLD", "FOLK", "FOND", "FONS", "FONT", "FOOD", "FOOL", "FOOT", "FOPS", "FORA", "FORB", "FORD", "FORE", "FORK", "FORM", "FORT", "FOSS", "FOUL", "FOUR", "FOWL", "FOXY", "FOYS", "FOZY", "FRAE", "FRAG", "FRAP", "FRAT", "FRAY", "FREE", "FRET", "FRIG", "FRIT", "FRIZ", "FROE", "FROG", "FROM", "FROW", "FRUG", "FUBS", "FUCI", "FUDS", "FUEL", "FUGS", "FUGU", "FUJI", "FULL", "FUME", "FUMY", "FUND", "FUNK", "FUNS", "FURL", "FURS", "FURY", "FUSE", "FUSS", "FUTZ", "FUZE", "FUZZ", "FYCE", "FYKE",
     "GABS", "GABY", "GADI", "GADS", "GAED", "GAEN", "GAES", "GAFF", "GAGA", "GAGE", "GAGS", "GAIN", "GAIT", "GALA", "GALE", "GALL", "GALS", "GAMA", "GAMB", "GAME", "GAMP", "GAMS", "GAMY", "GANE", "GANG", "GAOL", "GAPE", "GAPS", "GAPY", "GARB", "GARS", "GASH", "GASP", "GAST", "GATE", "GATS", "GAUD", "GAUM", "GAUN", "GAUR", "GAVE", "GAWK", "GAWP", "GAYS", "GAZE", "GEAR", "GECK", "GEDS", "GEED", "GEEK", "GEES", "GEEZ", "GELD", "GELS", "GELT", "GEMS", "GENE", "GENS", "GENT", "GENU", "GERM", "GEST", "GETA", "GETS", "GEUM", "GHAT", "GHEE", "GHIS", "GIBE", "GIBS", "GIDS", "GIED", "GIEN", "GIES", "GIFT", "GIGA", "GIGS", "GILD", "GILL", "GILT", "GIMP", "GINK", "GINS", "GIPS", "GIRD", "GIRL", "GIRN", "GIRO", "GIRT", "GIST", "GITE", "GITS", "GIVE", "GLAD", "GLAM", "GLED", "GLEE", "GLEG", "GLEN", "GLEY", "GLIA", "GLIB", "GLIM", "GLOB", "GLOM", "GLOP", "GLOW", "GLUE", "GLUG", "GLUM", "GLUT", "GNAR", "GNAT", "GNAW", "GNUS", "GOAD", "GOAL", "GOAS", "GOAT", "GOBO", "GOBS", "GOBY", "GODS", "GOER", "GOES", "GOGO", "GOLD", "GOLF", "GONE", "GONG", "GOOD", "GOOF", "GOON", "GOOP", "GOOS", "GORE", "GORM", "GORP", "GORY", "GOSH", "GOTH", "GOUT", "GOWD", "GOWK", "GOWN", "GOYS", "GRAB", "GRAD", "GRAM", "GRAN", "GRAT", "GRAY", "GREE", "GREW", "GREY", "GRID", "GRIG", "GRIM", "GRIN", "GRIP", "GRIT", "GROG", "GROK", "GROT", "GROW", "GRUB", "GRUE", "GRUM", "GUAN", "GAUR", "GUCK", "GUDE", "GUFF", "GULF", "GULL", "GULP", "GULS", "GUMS", "GUNK", "GUNS", "GURU", "GUSH", "GUST", "GUTS", "GUVS", "GUYS", "GYBE", "GYMS", "GYPS", "GYRE", "GYRI", "GYRO", "GYVE",
-    "HAAF", "HAAR", "HABU", "HACK", "HADE", "HADJ", "HAGS", "HAHA", "HAHS", "HAIK", "HAIL", "HAIR", "HAJI", "HAJJ", "HAKE", "HAKU", "HALE", "HALF", "HALL", "HALM", "HALO", "HALT", "HAME", "HAMS", "HAND", "HANG", "HANK", "HANT", "HAPS", "HARD", "HARE", "HARK", "HARL", "HARM", "HARP", "HART", "HASH", "HASP", "HAST", "HATE", "HATH", "HATS", "HAUL", "HAUT", "HAVE", "HAWK", "HAWS", "HAYS", "HAZE", "HAZY", "HEAD", "HEAL", "HEAP", "HEAR", "HEAT", "HEBE", "HECK", "HEED", "HEEL", "HEFT", "HEHS", "HEIL", "HEIR", "HELD", "HELM", "HELO", "HELP", "HEME", "HEMP", "HEMS", "HENS", "HENT", "HERB", "HERD", "HERE", "HERL", "HERM", "HERN", "HERO", "HERS", "HEST", "HETH", "HETS", "HEWN", "HEWS", "HICK", "HIDE", "HIED", "HIES", "HIGH", "HIKE", "HILA", "HILI", "HILL", "HILT", "HIMS", "HIND", "HINS", "HINT", "HIPS", "HIRE", "HISN", "HISS", "HIST", "HITS", "HIVE", "HOAR", "HOAX", "HOBO", "HOBS", "HOCK", "HODS", "HOED", "HOER", "HOES", "HOGG", "HOGS", "HOKE", "HOLD", "HOLK", "HOLM", "HOLP", "HOLS", "HOLT", "HOLY", "HOME", "HOMY", "HONE", "HONG", "HONS", "HOOD", "HOOF", "HOOK", "HOOP", "HOOT", "HOPE", "HOPS", "HORA", "HORN", "HOSE", "HOST", "HOTS", "HOUR", "HOVE", "HOWE", "HOWL", "HOWS", "HOYA", "HOYS", "HUBS", "HUCK", "HUED", "HUES", "HUFF", "HUGE", "HUGS", "HUIC", "HULA", "HULK", "HULL", "HUMP", "HUMS", "HUNG", "HUNH", "HUNK", "HUNS", "HUNT", "HURL", "HURT", "HUSH", "HUSK", "HUTS", "HWAN", "HYLA", "HYMN", "HYPE", "HYPO", "HYPS", "HYTE",
+    "HAAF", "HAAR", "HABU", "HACK", "HADE", "HADJ", "HAGS", "HAHA", "HAHS", "HAIK", "HAIL", "HAIR", "HAJI", "HAJJ", "HAKE", "HAKU", "HALE", "HALF", "HALL", "HALM", "HALO", "HALT", "HAME", "HAMS", "HAND", "HANG", "HANK", "HANT", "HAPS", "HARD", "HARE", "HARK", "HARL", "HARM", "HARP", "HART", "HASH", "HASP", "HAST", "HATE", "HATH", "HATS", "HAUL", "HAUT", "HAVE", "HAWK", "HAWS", "HAYS", "HAZE", "HAZY", "HEAD", "HEAL", "HEAP", "HEAR", "HEAT", "HEBE", "HECK", "HEED", "HEEL", "HEFT", "HEHS", "HEIL", "HEIR", "HELD", "HELL", "HELM", "HELO", "HELP", "HEME", "HEMP", "HEMS", "HENS", "HENT", "HERB", "HERD", "HERE", "HERL", "HERM", "HERN", "HERO", "HERS", "HEST", "HETH", "HETS", "HEWN", "HEWS", "HICK", "HIDE", "HIED", "HIES", "HIGH", "HIKE", "HILA", "HILI", "HILL", "HILT", "HIMS", "HIND", "HINS", "HINT", "HIPS", "HIRE", "HISN", "HISS", "HIST", "HITS", "HIVE", "HOAR", "HOAX", "HOBO", "HOBS", "HOCK", "HODS", "HOED", "HOER", "HOES", "HOGG", "HOGS", "HOKE", "HOLD", "HOLK", "HOLM", "HOLP", "HOLS", "HOLT", "HOLY", "HOME", "HOMY", "HONE", "HONK", "HONG", "HONS", "HOOD", "HOOF", "HOOK", "HOOP", "HOOT", "HOPE", "HOPS", "HORA", "HORN", "HOSE", "HOST", "HOTS", "HOUR", "HOVE", "HOWE", "HOWL", "HOWS", "HOYA", "HOYS", "HUBS", "HUCK", "HUED", "HUES", "HUFF", "HUGE", "HUGS", "HUIC", "HULA", "HULK", "HULL", "HUMP", "HUMS", "HUNG", "HUNH", "HUNK", "HUNS", "HUNT", "HURL", "HURT", "HUSH", "HUSK", "HUTS", "HWAN", "HYLA", "HYMN", "HYPE", "HYPO", "HYPS", "HYTE",
     "IAMB", "IBEX", "IBIS", "ICED", "ICES", "ICHS", "ICKY", "ICON", "IDEA", "IDEM", "IDES", "IDLE", "IDLY", "IDOL", "IDYL", "IFFY", "IGGS", "IGLU", "IKAT", "IKON", "ILEA", "ILEX", "ILIA", "ILKA", "ILKS", "ILLS", "ILLY", "IMAM", "IMID", "IMMY", "IMPI", "IMPS", "INBY", "INCH", "INFO", "INIA", "INKS", "INKY", "INLY", "INNS", "INRO", "INTI", "INTO", "IONS", "IOTA", "IRED", "IRES", "IRID", "IRIS", "IRKS", "IRON", "ISBA", "ISLE", "ISMS", "ITCH", "ITEM", "IWIS", "IXIA", "IZAR",
     "JABS", "JACK", "JADE", "JAGG", "JAGS", "JAIL", "JAKE", "JAMB", "JAMS", "JANE", "JAPE", "JARL", "JARS", "JATO", "JAUK", "JAUP", "JAVA", "JAWS", "JAYS", "JAZZ", "JEAN", "JEED", "JEEP", "JEER", "JEES", "JEEZ", "JEFE", "JEHU", "JELL", "JEON", "JERK", "JESS", "JEST", "JETE", "JETS", "JEUX", "JEWS", "JIAO", "JIBB", "JIBE", "JIBS", "JIFF", "JIGS", "JILL", "JILT", "JIMP", "JINK", "JINN", "JINS", "JINX", "JISM", "JIVE", "JIVY", "JOBS", "JOCK", "JOES", "JOEY", "JOGS", "JOHN", "JOIN", "JOKE", "JOKY", "JOLE", "JOLT", "JOSH", "JOSS", "JOTA", "JOTS", "JOUK", "JOWL", "JOWS", "JOYS", "JUBA", "JUBE", "JUCO", "JUDO", "JUGS", "JUJU", "JUKE", "JUKU", "JUMP", "JUNK", "JUPE", "JURA", "JURY", "JUST", "JUTE", "JUTS",
     "KAAS", "KABS", "KADI", "KAES", "KAFS", "KAGU", "KAIF", "KAIL", "KAIN", "KAKA", "KAKI", "KALE", "KAME", "KAMI", "KANA", "KANE", "KAON", "KAPA", "KAPH", "KARN", "KART", "KATA", "KATS", "KAVA", "KAYO", "KAYS", "KBAR", "KEAS", "KECK", "KEEF", "KEEK", "KEEL", "KEEN", "KEEP", "KEET", "KEFS", "KEGS", "KEIR", "KELP", "KELT", "KEMP", "KENO", "KENS", "KENT", "KEPI", "KEPS", "KEPT", "KERB", "KERF", "KERN", "KETO", "KEYS", "KHAF", "KHAN", "KHAT", "KHET", "KHIS", "KIBE", "KICK", "KIDS", "KIEF", "KIER", "KIFS", "KILL", "KILN", "KILO", "KILT", "KINA", "KIND", "KINE", "KING", "KINK", "KINO", "KINS", "KIPS", "KIRK", "KIRN", "KIRS", "KISS", "KIST", "KITE", "KITH", "KITS", "KIVA", "KIWI", "KLIK", "KNAP", "KNAR", "KNEE", "KNEW", "KNIT", "KNOB", "KNOP", "KNOT", "KNOW", "KNUR", "KOAN", "KOAS", "KOBO", "KOBS", "KOEL", "KOHL", "KOIS", "KOJI", "KOLA", "KOLO", "KONK", "KOOK", "KOPH", "KOPS", "KORA", "KORE", "KORS", "KOSS", "KOTO", "KRIS", "KUDO", "KUDU", "KUES", "KUFI", "KUNA", "KUNE", "KURU", "KVAS", "KYAK", "KYAR", "KYAT", "KYES", "KYTE",
@@ -45,11 +109,11 @@ DICTIONARY = [
     "MAAR", "MABE", "MACE", "MACH", "MACK", "MACS", "MADE", "MADS", "MAES", "MAGE", "MAGI", "MAGS", "MAID", "MAIL", "MAIM", "MAIN", "MAIR", "MAKE", "MAKO", "MALE", "MALL", "MALM", "MALT", "MAMA", "MANA", "MANE", "MANO", "MANS", "MANY", "MAPS", "MARA", "MARC", "MARE", "MARK", "MARL", "MARS", "MART", "MASA", "MASH", "MASK", "MASS", "MAST", "MATE", "MATH", "MATS", "MATT", "MAUD", "MAUL", "MAUN", "MAUT", "MAWN", "MAWS", "MAXI", "MAYA", "MAYO", "MAYS", "MAZE", "MAZY", "MEAD", "MEAL", "MEAN", "MEAT", "MEDS", "MEED", "MEEK", "MEET", "MEGA", "MEGS", "MELD", "MELL", "MELS", "MELT", "MEME", "MEMO", "MEMS", "MEND", "MENO", "MENU", "MEOU", "MEOW", "MERC", "MERE", "MERK", "MERL", "MESA", "MESH", "MESS", "META", "METE", "METH", "METS", "MEWL", "MEWS", "MEZE", "MHOS", "MIBS", "MICA", "MICE", "MICS", "MIDI", "MIDS", "MIEN", "MIFF", "MIGS", "MIKE", "MILD", "MILE", "MILK", "MILL", "MILO", "MILS", "MILT", "MIME", "MINA", "MIND", "MINE", "MINI", "MINK", "MINT", "MINX", "MIPS", "MIRE", "MIRI", "MIRK", "MIRS", "MIRY", "MISE", "MISO", "MISS", "MIST", "MITE", "MITT", "MITY", "MIXT", "MIZZ", "MNAS", "MOAI", "MOAN", "MOAS", "MOAT", "MOBE", "MOBS", "MOBY", "MOCK", "MOCS", "MODE", "MODI", "MODS", "MOGS", "MOHO", "MOIL", "MOJO", "MOKE", "MOLA", "MOLD", "MOLE", "MOLL", "MOLS", "MOLT", "MOLY", "MOME", "MOMI", "MOMS", "MONA", "MONK", "MONO", "MONS", "MONY", "MOOD", "MOOL", "MOON", "MOOR", "MOOS", "MOOT", "MOPE", "MOPS", "MOPY", "MORA", "MORE", "MORN", "MORS", "MORT", "MOSE", "MOSH", "MOSK", "MOSS", "MOST", "MOTE", "MOTH", "MOTS", "MOTT", "MOTU", "MOUE", "MOVE", "MOWN", "MOWS", "MOXA", "MOYA", "MOYS", "MOZE", "MOZO", "MOZZ", "MPOX", "MUCH", "MUCK", "MUDS", "MUFF", "MUGS", "MUID", "MUIR", "MULE", "MULL", "MUMM", "MUMP", "MUMS", "MUNI", "MUNS", "MUON", "MURA", "MURE", "MURK", "MURL", "MURR", "MUSE", "MUSH", "MUSK", "MUSS", "MUST", "MUTE", "MUTS", "MUTT", "MUZZ", "MWAH", "MYNA", "MYTH",
     "NAAN", "NABE", "NABS", "NADA", "NAFF", "NAGS", "NAIF", "NAIL", "NALA", "NAME", "NANA", "NANS", "NAOI", "NAOS", "NAPA", "NAPE", "NAPS", "NARC", "NARD", "NARK", "NARY", "NAVE", "NAVY", "NAYS", "NAZI", "NEAP", "NEAR", "NEAT", "NEBS", "NECK", "NEED", "NEEM", "NEEP", "NEGS", "NEIF", "NEMA", "NENE", "NEON", "NERD", "NESS", "NEST", "NETS", "NETT", "NEUK", "NEUM", "NEVE", "NEVI", "NEWS", "NEWT", "NEXT", "NIBS", "NICE", "NICK", "NIDE", "NIDI", "NIGH", "NILL", "NILS", "NIMS", "NINE", "NIPA", "NIPS", "NISI", "NITE", "NITS", "NIXE", "NIXY", "NOBS", "NOCK", "NODE", "NODS", "NOEL", "NOES", "NOGG", "NOGS", "NOIL", "NOIR", "NOLO", "NOMA", "NOME", "NOMS", "NONA", "NONE", "NOOK", "NOON", "NOPE", "NORI", "NORM", "NOSE", "NOSH", "NOSY", "NOTA", "NOTE", "NOUN", "NOUS", "NOVA", "NOWS", "NOWT", "NUBS", "NUDE", "NUKE", "NULL", "NUMB", "NUNS", "NURD", "NURL", "NUTS",
     "OAFS", "OAKS", "OAKY", "OARS", "OAST", "OATH", "OATS", "OBAS", "OBES", "OBEY", "OBIA", "OBIS", "OBIT", "OBOE", "OBOL", "OCAS", "ODAH", "ODAS", "ODDS", "ODEA", "ODES", "ODIC", "ODOR", "ODYL", "OFAY", "OFFS", "OGAM", "OGEE", "OGLE", "OGRE", "OHED", "OHIA", "OHMS", "OILS", "OILY", "OINK", "OKAS", "OKAY", "OKEH", "OKES", "OKRA", "OLDS", "OLDY", "OLEA", "OLEO", "OLES", "OLIO", "OLLA", "OMEN", "OMER", "OMIT", "ONCE", "ONES", "ONLY", "ONOS", "ONTO", "ONUS", "ONYX", "OOHS", "OOPS", "OOTS", "OOZE", "OOZY", "OPAH", "OPAL", "OPED", "OPEN", "OPES", "OPTS", "OPUS", "ORAD", "ORAL", "ORBS", "ORBY", "ORCA", "ORCS", "ORDO", "ORES", "ORGY", "ORLE", "ORRA", "ORTS", "ORYX", "ORZO", "OSAR", "OSES", "OSSA", "OTIC", "OTTO", "OUCH", "OUDS", "OUPH", "OURS", "OUST", "OUTS", "OUZO", "OVAL", "OVEN", "OVER", "OVUM", "OWED", "OWES", "OWLS", "OWNS", "OWSE", "OXEN", "OXES", "OXID", "OXIM", "OYER", "OYES", "OYEZ",
-    "PACA", "PACE", "PACK", "PACS", "PACT", "PACY", "PADI", "PADS", "PAGE", "PAID", "PAIK", "PAIL", "PAIN", "PAIR", "PAIS", "PAKS", "PALE", "PALI", "PALL", "PALM", "PALP", "PALS", "PALY", "PAMS", "PANE", "PANG", "PANS", "PANT", "PAPA", "PAPE", "PAPS", "PARA", "PARD", "PARE", "PARK", "PARR", "PARS", "PART", "PASE", "PASH", "PASS", "PAST", "PATE", "PATH", "PATS", "PATY", "PAUA", "PAUL", "PAVE", "PAWS", "PAYS", "PEAG", "PEAK", "PEAL", "PEAN", "PEAR", "PEAS", "PEAT", "PECH", "PECK", "PECS", "PEDS", "PEED", "PEEK", "PEEL", "PEEN", "PEEP", "PEER", "PEES", "PEGS", "PEHS", "PEIN", "PEKE", "PELE", "PELF", "PELL", "PELS", "PELT", "PEND", "PENE", "PENG", "PENI", "PENK", "PENS", "PENT", "PEON", "PEPO", "PEPS", "PERC", "PERE", "PERI", "PERK", "PERM", "PERN", "PERP", "PERT", "PERV", "PESO", "PEST", "PETS", "PEWS", "PFFT", "PFUI", "PHAT", "PHEW", "PHIS", "PHIZ", "PHON", "PHOT", "PHUT", "PIAL", "PIAN", "PIAS", "PICA", "PICE", "PICK", "PICS", "PIED", "PIER", "PIES", "PIGS", "PIKA", "PIKE", "PIKI", "PILE", "PILI", "PILL", "PILY", "PIMA", "PIMP", "PINA", "PINE", "PING", "PINK", "PINS", "PINT", "PINY", "PION", "PIPE", "PIPS", "PIPY", "PIRN", "PISH", "PISO", "PITA", "PITH", "PITS", "PITY", "PIXY", "PLAN", "PLAP", "PLAT", "PLAY", "PLEA", "PLEB", "PLED", "PLEW", "PLEX", "PLIE", "PLOD", "PLOP", "PLOT", "PLOW", "PLOY", "PLUG", "PLUM", "PLUS", "POCK", "POCO", "PODS", "POEM", "POET", "POGY", "POHS", "POIS", "POKE", "POKY", "POLE", "POLK", "POLL", "POLO", "POLS", "POLT", "POLY", "POME", "POMO", "POMP", "POMS", "POND", "PONE", "PONG", "PONK", "PONS", "PONY", "POOD", "POOF", "POOH", "POOL", "POON", "POOP", "POOR", "POOS", "POOT", "POPE", "POPS", "PORE", "PORK", "PORN", "PORT", "PORY", "POSE", "POSH", "POSS", "POST", "POSY", "POTS", "POUF", "POUR", "POUT", "POWS", "POXY", "POZZ", "PRAM", "PRAO", "PRAT", "PRAU", "PRAY", "PREE", "PREP", "PREY", "PREZ", "PRIG", "PRIM", "PROA", "PROB", "PROD", "PROF", "PROG", "PROM", "PROP", "PROS", "PROW", "PSIS", "PSST", "PTUI", "PUBS", "PUCE", "PUCK", "PUDS", "PUFF", "PUGS", "PUKE", "PULA", "PULE", "PULI", "PULK", "PULL", "PULP", "PULS", "PULU", "PULY", "PUMA", "PUMP", "PUNA", "PUNG", "PUNK", "PUNS", "PUNT", "PUNY", "PUPA", "PUPS", "PUPU", "PURE", "PURI", "PURL", "PURR", "PURS", "PUSH", "PUSS", "PUTS", "PUTT", "PUTZ", "PYAS", "PYES", "PYIC", "PYIN", "PYRE", "PYRO",
+    "PACA", "PACE", "PACK", "PACS", "PACT", "PACY", "PADI", "PADS", "PAGE", "PAID", "PAIK", "PAIL", "PAIN", "PAIR", "PAIS", "PAKS", "PALE", "PALI", "PALL", "PALM", "PALP", "PALS", "PALY", "PAMS", "PANE", "PANG", "PANS", "PANT", "PAPA", "PAPE", "PAPS", "PARA", "PARD", "PARE", "PARK", "PARR", "PARS", "PART", "PASE", "PASH", "PASS", "PAST", "PATE", "PATH", "PATS", "PATY", "PAUA", "PAUL", "PAVE", "PAWS", "PAYS", "PEAG", "PEAK", "PEAL", "PEAN", "PEAR", "PEAS", "PEAT", "PECH", "PECK", "PECS", "PEDS", "PEED", "PEEK", "PEEL", "PEEN", "PEEP", "PEER", "PEES", "PEGS", "PEHS", "PEIN", "PEKE", "PELE", "PELF", "PELL", "PELS", "PELT", "PEND", "PENE", "PENG", "PENI", "PENK", "PENS", "PENT", "PEON", "PEPO", "PEPS", "PERC", "PERE", "PERI", "PERK", "PERM", "PERN", "PERP", "PERT", "PERV", "PESO", "PEST", "PETS", "PEWS", "PFFT", "PFUI", "PHAT", "PHEW", "PHIS", "PHIZ", "PHON", "PHOT", "PHUT", "PIAL", "PIAN", "PIAS", "PICA", "PICE", "PICK", "PICS", "PIED", "PIER", "PIES", "PIGS", "PIKA", "PIKE", "PIKI", "PILE", "PILI", "PILL", "PILY", "PIMA", "PIMP", "PINA", "PINE", "PING", "PINK", "PINS", "PINT", "PINY", "PION", "PIPE", "PIPS", "PIPY", "PIRN", "PISH", "PISO", "PISS", "PITA", "PITH", "PITS", "PITY", "PIXY", "PLAN", "PLAP", "PLAT", "PLAY", "PLEA", "PLEB", "PLED", "PLEW", "PLEX", "PLIE", "PLOD", "PLOP", "PLOT", "PLOW", "PLOY", "PLUG", "PLUM", "PLUS", "POCK", "POCO", "PODS", "POEM", "POET", "POGY", "POHS", "POIS", "POKE", "POKY", "POLE", "POLK", "POLL", "POLO", "POLS", "POLT", "POLY", "POME", "POMO", "POMP", "POMS", "POND", "PONE", "PONG", "PONK", "PONS", "PONY", "POOD", "POOF", "POOH", "POOL", "POON", "POOP", "POOR", "POOS", "POOT", "POPE", "POPS", "PORE", "PORK", "PORN", "PORT", "PORY", "POSE", "POSH", "POSS", "POST", "POSY", "POTS", "POUF", "POUR", "POUT", "POWS", "POXY", "POZZ", "PRAM", "PRAO", "PRAT", "PRAU", "PRAY", "PREE", "PREP", "PREY", "PREZ", "PRIG", "PRIM", "PROA", "PROB", "PROD", "PROF", "PROG", "PROM", "PROP", "PROS", "PROW", "PSIS", "PSST", "PTUI", "PUBS", "PUCE", "PUCK", "PUDS", "PUFF", "PUGS", "PUKE", "PULA", "PULE", "PULI", "PULK", "PULL", "PULP", "PULS", "PULU", "PULY", "PUMA", "PUMP", "PUNA", "PUNG", "PUNK", "PUNS", "PUNT", "PUNY", "PUPA", "PUPS", "PUPU", "PURE", "PURI", "PURL", "PURR", "PURS", "PUSH", "PUSS", "PUTS", "PUTT", "PUTZ", "PYAS", "PYES", "PYIC", "PYIN", "PYRE", "PYRO",
     "QADI", "QAID", "QATS", "QOPH", "QUAD", "QUAG", "QUAI", "QUAT", "QUAY", "QUEY", "QUID", "QUIN", "QUIP", "QUIT", "QUIZ", "QUOD",
     "RABI", "RACA", "RACE", "RACH", "RACK", "RACY", "RADS", "RAFF", "RAFT", "RAGA", "RAGE", "RAGG", "RAGS", "RAGU", "RAIA", "RAID", "RAIK", "RAIL", "RAIN", "RAIS", "RAIT", "RAJA", "RAKE", "RAKI", "RAKU", "RALE", "RAMI", "RAMP", "RAMS", "RAND", "RANG", "RANI", "RANK", "RANT", "RAPE", "RAPS", "RAPT", "RARE", "RASE", "RASH", "RASP", "RAST", "RATA", "RATE", "RATH", "RATO", "RATS", "RAVE", "RAWS", "RAYA", "RAYS", "RAZE", "RAZZ", "READ", "REAL", "REAM", "REAP", "REAR", "REBS", "RECK", "RECS", "REDD", "REDE", "REDO", "REDS", "REED", "REEF", "REEK", "REEL", "REES", "REFS", "REFT", "REGS", "REIF", "REIN", "REIS", "REKE", "RELY", "REMS", "REND", "RENT", "REPO", "REPP", "REPS", "RESH", "REST", "RETE", "RETS", "REVS", "RHEA", "RHOS", "RHUS", "RIAD", "RIAL", "RIAS", "RIBS", "RICE", "RICH", "RICK", "RIDS", "RIEL", "RIFE", "RIFF", "RIFS", "RIFT", "RIGS", "RILE", "RILL", "RIMA", "RIME", "RIMS", "RIMY", "RIND", "RING", "RINK", "RINS", "RIOT", "RIPE", "RIPS", "RISE", "RISK", "RISP", "RITE", "RITS", "RITT", "RITZ", "RIVE", "ROAD", "ROAM", "ROAN", "ROAR", "ROBE", "ROBS", "ROCK", "ROCS", "RODE", "RODS", "ROES", "ROIL", "ROIN", "ROKE", "ROKS", "ROLE", "ROLF", "ROLL", "ROMA", "ROMP", "ROMS", "ROND", "RONE", "ROOF", "ROOK", "ROOM", "ROOS", "ROOT", "ROPE", "ROPY", "ROSE", "ROSY", "ROTA", "ROTE", "ROTI", "ROTS", "ROUE", "ROUL", "ROUM", "ROUP", "ROUT", "ROUX", "ROVE", "ROWS", "RUBE", "RUBS", "RUBY", "RUCK", "RUCS", "RUDD", "RUDE", "RUED", "RUER", "RUES", "RUFF", "RUGS", "RUIN", "RULE", "RULY", "RUMP", "RUNS", "RUNT", "RURP", "RUSH", "RUSK", "RUST", "RUTH", "RUTS", "RYAS", "RYES", "RYKE", "RYND", "RYOT", "RYPE",
     "SAAG", "SABE", "SABS", "SACK", "SACS", "SADE", "SADI", "SAFE", "SAGA", "SAGE", "SAGO", "SAGS", "SAGY", "SAID", "SAIL", "SAIM", "SAIN", "SAKE", "SAKI", "SALE", "SALL", "SALP", "SALS", "SALT", "SAMA", "SAME", "SAMP", "SAMS", "SAND", "SANE", "SANG", "SANK", "SANS", "SAPS", "SARD", "SARI", "SARK", "SASH", "SASS", "SATE", "SAUL", "SAVE", "SAWN", "SAWS", "SAYS", "SCAB", "SCAD", "SCAG", "SCAM", "SCAN", "SCAR", "SCAT", "SCOP", "SCOT", "SCOW", "SCRY", "SCUD", "SCUM", "SCUP", "SCUR", "SCUT", "SEAL", "SEAM", "SEAN", "SEAR", "SEAS", "SEAT", "SECS", "SECT", "SEED", "SEEK", "SEEL", "SEEM", "SEEN", "SEEP", "SEER", "SEES", "SEGO", "SEGS", "SEIF", "SEIS", "SEKT", "SELD", "SELL", "SELS", "SEME", "SEMI", "SEND", "SENE", "SENS", "SENT", "SEPS", "SEPT", "SERA", "SERE", "SERF", "SERS", "SESS", "SETA", "SETS", "SETT", "SEWN", "SEWS", "SEXT", "SEXY", "SHAD", "SHAG", "SHAH", "SHAM", "SHAW", "SHAY", "SHEA", "SHED", "SHES", "SHEW", "SHIM", "SHIN", "SHIP", "SHIR", "SHIV", "SHMO", "SHOD", "SHOE", "SHOG", "SHOO", "SHOP", "SHOT", "SHOW", "SHRI", "SHUL", "SHUN", "SHUT", "SIAL", "SIBB", "SIBS", "SICE", "SICK", "SICS", "SIDE", "SIFT", "SIGH", "SIGN", "SIKA", "SIKE", "SILD", "SILK", "SILL", "SILO", "SILT", "SIMA", "SIMP", "SIMS", "SIND", "SINE", "SING", "SINH", "SINK", "SINS", "SIPE", "SIPS", "SIRE", "SIRS", "SISS", "SIST", "SITE", "SITS", "SIZE", "SIZY", "SKAG", "SKAS", "SKAT", "SKEE", "SKEG", "SKEP", "SKEW", "SKID", "SKIM", "SKIN", "SKIP", "SKIS", "SKIT", "SKUA", "SLAB", "SLAG", "SLAM", "SLAP", "SLAT", "SLAW", "SLAY", "SLEB", "SLED", "SLEW", "SLID", "SLIM", "SLIP", "SLIT", "SLOB", "SLOE", "SLOG", "SLOP", "SLOT", "SLOW", "SLUB", "SLUE", "SLUG", "SLUM", "SLUR", "SMIT", "SMOG", "SMUG", "SMUT", "SNAB", "SNAG", "SNAP", "SNAR", "SNAW", "SNED", "SNIB", "SNIG", "SNIP", "SNIT", "SNOB", "SNOD", "SNOG", "SNOT", "SNOW", "SNUB", "SNUG", "SOAK", "SOAP", "SOAR", "SOBA", "SOBS", "SOCA", "SOCK", "SODA", "SODS", "SOFA", "SOFT", "SOIL", "SOJA", "SOKE", "SOLA", "SOLD", "SOLE", "SOLI", "SOLO", "SOLS", "SOMA", "SOME", "SOMS", "SONG", "SONS", "SOOK", "SOON", "SOOT", "SOPH", "SOPS", "SORA", "SORB", "SORD", "SORE", "SORI", "SORN", "SORT", "SOSS", "SOTH", "SOTS", "SOUK", "SOUL", "SOUP", "SOUR", "SOUS", "SOWN", "SOWS", "SOYA", "SOYS", "SPAE", "SPAG", "SPAM", "SPAN", "SPAR", "SPAS", "SPAT", "SPAW", "SPAY", "SPEC", "SPED", "SPEW", "SPIK", "SPIN",
-    "SPIT", "SPIV", "SPOT", "SPRY", "SPUD", "SPUE", "SPUG", "SPUN", "SPUR", "SRIS", "STAB", "STAG", "STAR", "STAT", "STAW", "STAY", "STEM", "STEP", "STET", "STEW", "STEY", "STIR", "STOA", "STOB", "STOP", "STOT", "STOW", "STUB", "STUD", "STUM", "STUN", "STYE", "SUBA", "SUBS", "SUCH", "SUDS", "SUED", "SUER", "SUES", "SUET", "SUGH", "SUIT", "SULK", "SULU", "SUMO", "SUMP", "SUMS", "SUNG", "SUNK", "SUNN", "SUNS", "SUPE", "SUPS", "SUQS", "SURA", "SURE", "SURF", "SUSS", "SWAB", "SWAG", "SWAM", "SWAN", "SWAP", "SWAT", "SWAY", "SWIG", "SWIM", "SWOB", "SWOP", "SWOT", "SWUM", "SYBO", "SYCE", "SYKE", "SYLI", "SYNC", "SYNE", "SYPH",
+    "SPIT", "SPIV", "SPOT", "SPRY", "SPUD", "SPUE", "SPUG", "SPUN", "SPUR", "SRIS", "STAB", "STAG", "STAR", "STAT", "STAW", "STAY", "STEM", "STEP", "STET", "STEW", "STEY", "STIR", "STOA", "STOB", "STOP", "STOT", "STOW", "STUB", "STUD", "STUM", "STUN", "STYE", "SUBA", "SUBS", "SUCH", "SUCK", "SUDS", "SUED", "SUER", "SUES", "SUET", "SUGH", "SUIT", "SULK", "SULU", "SUMO", "SUMP", "SUMS", "SUNG", "SUNK", "SUNN", "SUNS", "SUPE", "SUPS", "SUQS", "SURA", "SURE", "SURF", "SUSS", "SWAB", "SWAG", "SWAM", "SWAN", "SWAP", "SWAT", "SWAY", "SWIG", "SWIM", "SWOB", "SWOP", "SWOT", "SWUM", "SYBO", "SYCE", "SYKE", "SYLI", "SYNC", "SYNE", "SYPH",
     "TABS", "TABU", "TACE", "TACH", "TACK", "TACO", "TACT", "TADS", "TAEL", "TAGS", "TAHR", "TAIL", "TAIN", "TAKA", "TAKE", "TALA", "TALC", "TALE", "TALI", "TALK", "TALL", "TAME", "TAMP", "TAMS", "TANG", "TANK", "TANS", "TAOS", "TAPA", "TAPE", "TAPS", "TAPU", "TARA", "TARE", "TARN", "TARO", "TARP", "TARS", "TART", "TASK", "TASS", "TATE", "TATS", "TAUS", "TAUT", "TAVS", "TAWS", "TAXA", "TAXI", "TAYS", "TEAK", "TEAL", "TEAM", "TEAR", "TEAS", "TEAT", "TECH", "TECS", "TEDS", "TEED", "TEEL", "TEEM", "TEEN", "TEES", "TEFF", "TEGS", "TELA", "TELE", "TELL", "TELS", "TELT", "TEMP", "TEND", "TENS", "TENT", "TEPA", "TERM", "TERN", "TEST", "TETH", "TETS", "TEWS", "TEXT", "THAE", "THAN", "THAT", "THAW", "THEE", "THEM", "THEN", "THEW", "THEY", "THIN", "THIS", "THON", "THOU", "THRO", "THRU", "THUD", "THUG", "THUS", "TICS", "TIDE", "TIDS", "TIDY", "TIED", "TIER", "TIES", "TIFF", "TIKE", "TIKI", "TILE", "TILL", "TILS", "TILT", "TIME", "TINE", "TING", "TINS", "TINT", "TINY", "TIPS", "TIRE", "TIRL", "TIRO", "TITS", "TIVY", "TOAD", "TOBY", "TOCK", "TOCO", "TODS", "TODY", "TOED", "TOES", "TOFF", "TOFT", "TOFU", "TOGA", "TOGS", "TOIL", "TOIT", "TOKE", "TOLA", "TOLD", "TOLE", "TOLL", "TOLU", "TOMB", "TOME", "TOMS", "TONE", "TONG", "TONS", "TONY", "TOOK", "TOOL", "TOOM", "TOON", "TOOT", "TOPE", "TOPH", "TOPI", "TOPO", "TOPS", "TORA", "TORC", "TORE", "TORI", "TORN", "TORO", "TORR", "TORS", "TORT", "TORY", "TOSH", "TOSS", "TOST", "TOTE", "TOTS", "TOUR", "TOUT", "TOWN", "TOWS", "TOWY", "TOYS", "TRAD", "TRAM", "TRAP", "TRAY", "TREE", "TREF", "TREK", "TRES", "TRET", "TREY", "TRIG", "TRIM", "TRIO", "TRIP", "TROD", "TROG", "TROP", "TROT", "TROW", "TROY", "TRUE", "TRUG", "TSAR", "TSKS", "TUBA", "TUBE", "TUBS", "TUCK", "TUFA", "TUFF", "TUFT", "TUGS", "TULE", "TUMP", "TUNA", "TUNE", "TUNG", "TUNS", "TUPS", "TURD", "TURF", "TURK", "TURN", "TUSH", "TUSK", "TUTS", "TUTU", "TWAE", "TWAS", "TWEE", "TWIG", "TWIN", "TWIT", "TWOS", "TYEE", "TYER", "TYES", "TYIN", "TYKE", "TYNE", "TYPE", "TYPO", "TYPP", "TYPY", "TYRE", "TYRO", "TZAR",
     "UDON", "UDOS", "UGHS", "UGLY", "UKES", "ULAN", "ULNA", "ULUS", "ULVA", "UMBO", "UMPS", "UNAI", "UNAU", "UNBE", "UNCI", "UNCO", "UNDE", "UNDO", "UNDY", "UNIT", "UNTO", "UPAS", "UPBY", "UPDO", "UPON", "URBS", "URDS", "UREA", "URGE", "URIC", "URNS", "URPS", "URSA", "URUS", "USED", "USER", "USES", "UTAS", "UTES", "UVEA",
     "VACS", "VAGI", "VAIL", "VAIN", "VAIR", "VALE", "VAMP", "VANE", "VANG", "VANS", "VARA", "VARS", "VARY", "VASA", "VASE", "VAST", "VATS", "VATU", "VAUS", "VAVS", "VAWS", "VEAL", "VEEP", "VEER", "VEES", "VEIL", "VEIN", "VELA", "VELD", "VENA", "VEND", "VENT", "VERB", "VERT", "VERY", "VEST", "VETO", "VETS", "VEXT", "VIAL", "VIBE", "VICE", "VIDE", "VIDS", "VIED", "VIER", "VIES", "VIEW", "VIGA", "VIGS", "VILE", "VILL", "VIMS", "VINA", "VINE", "VINO", "VINS", "VINT", "VINY", "VIOL", "VIRL", "VISA", "VISE", "VITA", "VITE", "VIVA", "VIVE", "VLOG", "VOID", "VOLE", "VOLT", "VOTE", "VOWS", "VROW", "VUGG", "VUGH", "VUGS",
@@ -59,143 +123,137 @@ DICTIONARY = [
     "ZAGS", "ZANY", "ZAPS", "ZARF", "ZEAL", "ZEBU", "ZEDS", "ZEES", "ZEIN", "ZEKS", "ZEPS", "ZERK", "ZERO", "ZEST", "ZETA", "ZIGS", "ZILL", "ZINC", "ZINE", "ZING", "ZINS", "ZIPS", "ZITI", "ZITS", "ZOEA", "ZOIC", "ZONA", "ZONE", "ZONK", "ZOOM", "ZOON", "ZOOS", "ZORI", "ZOUK", "ZYME"
 
    ]
-   
-   # --- 2. Helper Functions for Word Ladder Logic ---
-   
-   # Checks if a word is in our predefined dictionary.
+    
+    # --- 2. Helper Functions for Word Ladder Logic ---
+    
+    # Checks if a word is in our predefined dictionary.
 def is_valid_word(word, dictionary_list):
-       return word.upper() in dictionary_list
-   
-   # Checks if two words differ by exactly one letter at the same position.
+        return word.upper() in dictionary_list
+    
+    # Checks if two words differ by exactly one letter at the same position.
 def is_morph_step(word1, word2):
-       if len(word1) != len(word2):
-           return False
-       diff_count = 0
-       for i in range(len(word1)):
-           if word1[i] != word2[i]:
-               diff_count += 1
-       return diff_count == 1
-   
-   # Finds all valid next words that are one letter different from the current word.
+        if len(word1) != len(word2):
+            return False
+        diff_count = 0
+        for i in range(len(word1)):
+            if word1[i] != word2[i]:
+                diff_count += 1
+        return diff_count == 1
+    
+    # Finds all valid next words that are one letter different from the current word.
 def find_neighbors(word, dictionary_list):
-       neighbors = []
-       for dict_word in dictionary_list:
-           if is_morph_step(word, dict_word):
-               neighbors.append(dict_word)
-       return neighbors
-   
-   # --- 3. Breadth-First Search (BFS) to Find Shortest Path ---
-   
-   # Finds the shortest word ladder path between start_word and target_word.
+        neighbors = []
+        for dict_word in dictionary_list:
+            if is_morph_step(word, dict_word):
+                neighbors.append(dict_word)
+        return neighbors
+    
+    # --- 3. Breadth-First Search (BFS) to Find Shortest Path ---
+    
+    # Finds the shortest word ladder path between start_word and target_word.
 def find_shortest_path_bfs(start_word, target_word, dictionary_list):
-       # Ensure words are uppercase for dictionary consistency
-       start_word = start_word.upper()
-       target_word = target_word.upper()
-       
-       if start_word == target_word:
-           return [start_word]
-       
-       if not is_valid_word(start_word, dictionary_list) or not is_valid_word(target_word, dictionary_list):
-           return None # Start or target word not in dictionary
-       
-       # Queue for BFS: stores (current_word, path_list)
-       queue = collections.deque([(start_word, [start_word])])
-       visited = {start_word} # Keep track of visited words to avoid cycles and redundant paths
-       
-       while queue:
-           current_word, path = queue.popleft()
-           
-           for neighbor in find_neighbors(current_word, dictionary_list):
-               if neighbor == target_word:
-                   return path + [target_word] # Found the shortest path!
-               
-               if neighbor not in visited:
-                   visited.add(neighbor)
-                   queue.append((neighbor, path + [neighbor]))
-                   
-       return None # No path found
-   
-   # --- 4. Puzzle Generation Function ---
-   
-def generate_word_morph_puzzle(dictionary_list, min_length=4, max_length=4, min_path_len=3, max_attempts=1000):
-       """
-       Generates a Word Morph puzzle (start_word, target_word) with a calculated optimal path.
-       
-       Args:
-           dictionary_list (list): A list of valid words.
-           min_length (int): Minimum length for start/target words.
-           max_length (int): Maximum length for start/target words.
-           min_path_len (int): Minimum acceptable optimal path length.
-           max_attempts (int): Maximum attempts to find a suitable puzzle.
-           
-       Returns:
-           dict or None: A dictionary with 'start_word', 'target_word', 'optimal_path_length',
-                         'optimal_path', and 'difficulty', or None if no puzzle found.
-       """
-       
-       # Filter dictionary by desired length
-       filtered_dictionary = [word for word in dictionary_list if min_length <= len(word) <= max_length]
-       
-       if len(filtered_dictionary) < 2:
-           print(f"Error: Dictionary too small for words of length {min_length}-{max_length}.")
-           return None
-       
-       for attempt in range(max_attempts):
-           start_word = random.choice(filtered_dictionary)
-           target_word = random.choice(filtered_dictionary)
-           
-           # Ensure start and target are different and of consistent length
-           if start_word == target_word or len(start_word) != len(target_word):
-               continue
-               
-           print(f"Attempting to generate puzzle: {start_word} to {target_word} (Attempt {attempt + 1})")
-           
-           path = find_shortest_path_bfs(start_word, target_word, filtered_dictionary)
-           
-           if path:
-               path_length = len(path) - 1 # Number of transitions
-               
-               if path_length >= min_path_len:
-                   # Determine difficulty based on path length
-                   if path_length <= 3:
-                       difficulty = "Easy"
-                   elif path_length <= 5:
-                       difficulty = "Medium"
-                   else:
-                       difficulty = "Hard"
-                       
-                   return {
-                       "start_word": start_word,
-                       "target_word": target_word,
-                       "optimal_path_length": path_length,
-                       "optimal_path": path, # Include the path for verification/reference
-                       "difficulty": difficulty
-                   }
-                   
-       print("Could not find a suitable puzzle within the given constraints and attempts.")
-       return None
+        # Ensure words are uppercase for dictionary consistency
+        start_word = start_word.upper()
+        target_word = target_word.upper()
+        
+        if start_word == target_word:
+            return [start_word]
+        
+        if not is_valid_word(start_word, dictionary_list) or not is_valid_word(target_word, dictionary_list):
+            return None # Start or target word not in dictionary
+        
+        # Queue for BFS: stores (current_word, path_list)
+        queue = collections.deque([(start_word, [start_word])])
+        visited = {start_word} # Keep track of visited words to avoid cycles and redundant paths
+        
+        while queue:
+            current_word, path = queue.popleft()
+            
+            for neighbor in find_neighbors(current_word, dictionary_list):
+                if neighbor == target_word:
+                    return path + [target_word] # Found the shortest path!
+                
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append((neighbor, path + [neighbor]))
+                    
+        return None # No path found
+    
+    # --- 4. Puzzle Generation Function ---
+    
+# --- 4. Puzzle Generation Function ---
 
-   # --- 5. Example Usage ---
+def generate_word_morph_puzzle(dictionary_list, min_length=4, max_length=4, min_path_len=3, max_attempts=1000):
+    """
+    Generates a Word Morph puzzle with a calculated optimal path and a fun fact.
+    """
+    filtered_dictionary = [word for word in dictionary_list if min_length <= len(word) <= max_length]
+    
+    if len(filtered_dictionary) < 2:
+        print(f"Error: Dictionary too small for words of length {min_length}-{max_length}.")
+        return None
+    
+    for attempt in range(max_attempts):
+        start_word = random.choice(filtered_dictionary)
+        target_word = random.choice(filtered_dictionary)
+        
+        if start_word == target_word or len(start_word) != len(target_word):
+            continue
+        
+        print(f"Attempting to generate puzzle: {start_word} to {target_word} (Attempt {attempt + 1})")
+        
+        path = find_shortest_path_bfs(start_word, target_word, filtered_dictionary)
+        
+        if path:
+            path_length = len(path) - 1 # Number of transitions
+            
+            if path_length >= min_path_len:
+                if path_length <= 3:
+                    difficulty = "Easy"
+                elif path_length <= 5:
+                    difficulty = "Medium"
+                else:
+                    difficulty = "Hard"
+                
+                # CRITICAL CHANGE: Generate the fun fact here!
+                fun_fact = generate_fun_fact_from_api(target_word)
+                if fun_fact == "No fun fact available for this word.":
+                    # If API call fails, continue the loop to find a puzzle that works
+                    print(f"  Warning: Could not get a fun fact for {target_word}. Skipping this puzzle.")
+                    continue
+                
+                return {
+                    "start_word": start_word,
+                    "target_word": target_word,
+                    "optimal_path_length": path_length,
+                    "optimal_path": path,
+                    "difficulty": difficulty,
+                    "fun_fact": fun_fact # Add the new fun_fact field here
+                }
+                    
+    print("Could not find a suitable puzzle within the given constraints and attempts.")
+    return None
+
+# --- 5. Example Usage ---
 if __name__ == "__main__":
-       print("--- Starting Word Morph Puzzle Generation ---")
-       
-       # You can adjust these parameters to get different types of puzzles
-       # For LIME-SOUP which is a 3-step optimal, you'd set min_path_len=3.
-       # The current DICTIONARY has LIME and SOUP at 4 letters.
-       puzzle_info = generate_word_morph_puzzle(DICTIONARY,
-                                                min_length=4,
-                                                max_length=4,
-                                                min_path_len=3,
-                                                max_attempts=100) # Reduced attempts for quicker output
-       
-       if puzzle_info:
-           print("\n--- Generated Puzzle ---")
-           print(f"Start Word: {puzzle_info['start_word']}")
-           print(f"Target Word: {puzzle_info['target_word']}")
-           print(f"Optimal Path Length (transitions): {puzzle_info['optimal_path_length']}")
-           print(f"Optimal Path: {puzzle_info['optimal_path']}")
-           print(f"Difficulty: {puzzle_info['difficulty']}")
-           print("\nCopy this info to your Firebase 'dailyPuzzles' collection!")
-       else:
-           print("\nFailed to generate a puzzle.")
-           print("Consider increasing max_attempts or adjusting min_path_len.")
+    print("--- Starting Word Morph Puzzle Generation ---")
+    
+    puzzle_info = generate_word_morph_puzzle(DICTIONARY,
+                                             min_length=4,
+                                             max_length=4,
+                                             min_path_len=3,
+                                             max_attempts=100)
+    
+    if puzzle_info:
+        print("\n--- Generated Puzzle ---")
+        print(f"Start Word: {puzzle_info['start_word']}")
+        print(f"Target Word: {puzzle_info['target_word']}")
+        print(f"Optimal Path Length (transitions): {puzzle_info['optimal_path_length']}")
+        print(f"Optimal Path: {puzzle_info['optimal_path']}")
+        print(f"Difficulty: {puzzle_info['difficulty']}")
+        # CRITICAL CHANGE: Print the new fun fact field
+        print(f"Fun Fact: {puzzle_info['fun_fact']}")
+        print("\nCopy this info to your Firebase 'dailyPuzzles' collection!")
+    else:
+        print("\nFailed to generate a puzzle.")
+        print("Consider increasing max_attempts or adjusting min_path_len.")
