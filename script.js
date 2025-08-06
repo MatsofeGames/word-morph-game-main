@@ -20,6 +20,7 @@ let gameInProgress = false;
 let inTutorialMode = false; // New flag to track if tutorial was opened mid-game
 let lastSubmissionId = null; // Stores the ID of the last submitted score for highlighting
 let currentFunFact = ""; // NEW: Stores the fun fact from the loaded puzzle
+let dailyPuzzleId = ""; // Stores a unique ID for the daily puzzle
 // --- Curated List of Random Puzzles (for "Play Random Puzzle" feature) ---
 // All puzzles are 4-letter words, with optimal path lengths of 2 or more.
 // Difficulty is based on optimal path length: Easy (2-3), Medium (4-5), Hard (6+)
@@ -203,7 +204,20 @@ function isValidMorphStep(currentWord, nextWord) {
  * @param {object|null} puzzleOverride An optional puzzle object to use instead of fetching from Firebase.
  */
 async function initializeGame(puzzleOverride = null) {
+    // At the top of the initializeGame() function
     console.log("initializeGame() function started!");
+
+    // --- NEW LOGIC: Check for existing completion of today's puzzle ---
+    const today = new Date();
+    const todayString = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+        String(today.getDate()).padStart(2, '0');
+    const completionRecord = localStorage.getItem('wordMorphDailyCompletion');
+
+
+    // --- END NEW LOGIC ---
+
+    // ... rest of the initializeGame() code follows here
     // Hide Share Result button at the start of any new game
     shareResultBtn.classList.add('hidden');
     shareResultBtn.classList.remove('block');
@@ -237,6 +251,7 @@ async function initializeGame(puzzleOverride = null) {
 
             if (!querySnapshot.empty) {
                 selectedPuzzleData = querySnapshot.docs[0].data();
+                dailyPuzzleId = todayString;
                 console.log(`Successfully loaded puzzle for ${todayString}: ${selectedPuzzleData.start_word} to ${selectedPuzzleData.target_word}`);
             } else {
                 console.warn(`No puzzle found for ${todayString}. Using default puzzle.`);
@@ -272,6 +287,54 @@ async function initializeGame(puzzleOverride = null) {
     optimalPathLength = selectedPuzzleData.optimal_path_length;
     window.currentOptimalPath = selectedPuzzleData.optimal_path; // Store the full optimal path
     currentFunFact = selectedPuzzleData.fun_fact; // NEW: Store the fun fact
+    seedWordDisplay.textContent = currentSeedWord;
+    targetWordDisplay.textContent = currentTargetWord;
+    difficultyDisplay.textContent = currentDifficulty;
+    userGuessInput.value = ''; // Clear input field
+
+    if (!puzzleOverride && completionRecord === todayString) {
+        console.log(`Puzzle for ${todayString} already completed. Cannot start a new game.`);
+
+        window.showMessage(`You've already solved today's puzzle! Come back tomorrow for a new one.`, 10000);
+
+        userGuessInput.disabled = true;
+        submitGuessBtn.disabled = true;
+        hintBtn.disabled = true;
+        swapBtn.disabled = true;
+        skipBtn.disabled = true;
+
+        // --- NEW LOGIC IS INSERTED HERE ---
+        try {
+            const scoresCollectionRef = collection(window.firestoreDb, `artifacts/${window.appId}/public/data/wordMorphScores`);
+            const q = query(
+                scoresCollectionRef,
+                where("puzzleId", "==", `${currentSeedWord}-${currentTargetWord}-${optimalPathLength}`),
+                where("userId", "==", window.currentUserId)
+            );
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                const userScoreData = querySnapshot.docs[0].data();
+                currentChain = userScoreData.chain;
+            } else {
+                console.warn("User's score not found. Falling back to optimal path.");
+                currentChain = window.currentOptimalPath;
+            }
+        } catch (e) {
+            console.error("Error retrieving user's saved chain: ", e);
+            currentChain = window.currentOptimalPath;
+        }
+        renderWordChain();
+        loadLeaderboard();
+        // --- END OF NEW LOGIC ---
+
+        giveUpBtn.classList.add('hidden');
+        replayPuzzleBtn.classList.add('hidden');
+        randomPuzzleBtn.classList.remove('hidden');
+        randomPuzzleBtn.classList.add('block');
+
+        return;
+    }
 
     // --- Reset Game State for a New Round ---
     currentChain = [currentSeedWord]; // Start chain with the seed word
@@ -296,10 +359,7 @@ async function initializeGame(puzzleOverride = null) {
     powerUpCounts.hint = 2; // Give 2 hint to start
 
     // --- Update UI Elements ---
-    seedWordDisplay.textContent = currentSeedWord;
-    targetWordDisplay.textContent = currentTargetWord;
-    difficultyDisplay.textContent = currentDifficulty;
-    userGuessInput.value = ''; // Clear input field
+
     userGuessInput.disabled = false; // Enable input
     submitGuessBtn.disabled = false; // Enable submit button
 
@@ -353,7 +413,7 @@ function processGuess() {
         }, 1000); // Flash for 1 second
         // Add a time penalty for invalid words
         gameTimer += 4; // Add 5 seconds penalty
-        window.showMessage(`'${guess}' is not a valid word.`, 5000);
+        window.showMessage(`'${guess}' is not a valid word.`, 3000);
         return; // Stop function execution here
     }
 
@@ -366,7 +426,7 @@ function processGuess() {
         }, 1000); // Flash for 1 second
         // Add a time penalty for invalid morph steps
         gameTimer += 4; // Add 5 seconds penalty
-        window.showMessage(`'${guess}' is not a valid morph from '${lastWordInChain}'. One letter, same position!`, 5000);
+        window.showMessage(`'${guess}' is not a valid morph from '${lastWordInChain}'. One letter, same position!`, 3000);
         return; // Stop function execution here
     }
 
@@ -488,6 +548,7 @@ function startTimer() {
 // --- 6. Core Game Loop Functions ---
 
 /**
+ /**
  * Ends the game and displays the results in a modal.
  * @param {boolean} won True if the player reached the target word.
  * @param {boolean} [isGiveUp=false] Optional. True if the player gave up.
@@ -503,6 +564,9 @@ async function endGame(won, isGiveUp = false) {
     swapBtn.disabled = true;
     skipBtn.disabled = true;
 
+    // The player's chain is already stored in the global 'currentChain' variable.
+    // We do NOT need to query Firestore to retrieve it here.
+
     currentScore = calculateFinalScore(won, currentChain.length, gameTimer, powerUpsUsedThisGame, optimalPathLength);
 
     console.log("Game ended. Player chain:", currentChain);
@@ -514,18 +578,28 @@ async function endGame(won, isGiveUp = false) {
         submittedId = await saveScore({
             userId: window.currentUserId,
             score: currentScore,
-            chain: currentChain,
+            chain: currentChain, // This will now correctly save the player's path
             time: gameTimer,
             puzzleId: `${currentSeedWord}-${currentTargetWord}-${optimalPathLength}`,
             date: new Date().toISOString(),
             difficulty: currentDifficulty,
-            fun_fact: currentFunFact
+            fun_fact: currentFunFact,
+            timestamp: new Date() // NEW: Add a timestamp for robust sorting
         });
+
+        // Save completion status to localStorage (no need for a nested if)
+        const today = new Date();
+        const todayString = today.getFullYear() + '-' +
+            String(today.getMonth() + 1).padStart(2, '0') + '-' +
+            String(today.getDate()).padStart(2, '0');
+
+        // This check ensures we only set the completion flag for the daily puzzle, not random ones.
+        if (dailyPuzzleId !== "") {
+            localStorage.setItem('wordMorphDailyCompletion', dailyPuzzleId);
+            console.log(`Saved daily puzzle completion for ${dailyPuzzleId} to localStorage.`);
+        }
     }
 
-    // Now that the score is guaranteed to be saved (or we know it wasn't saved),
-    // we can safely show the modal.
-    // CRITICAL FIX: Pass the submittedId directly to the modal function
     showFunFactModal(currentScore, gameTimer, won, isGiveUp, currentFunFact, submittedId);
 
     randomPuzzleBtn.classList.remove('hidden');
@@ -534,6 +608,9 @@ async function endGame(won, isGiveUp = false) {
     shareResultBtn.classList.add('block');
     giveUpBtn.classList.add('hidden');
 }
+
+// NOTE: Please also add the 'timestamp: new Date()' line to your saveScore function
+// in the `saveScore` function's `addDoc` call, as shown above.
 
 /**
  * Saves a player's score to Firestore.
