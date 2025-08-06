@@ -311,7 +311,7 @@ async function initializeGame(puzzleOverride = null) {
     startTimer();
 
     // Show initial puzzle message (will use loaded words)
-    window.showMessage(`Today's puzzle: ${currentSeedWord} to ${currentTargetWord}!`, 5000);
+    window.showMessage(`Today's puzzle: ${currentSeedWord} to ${currentTargetWord}!`, 10);
     loadLeaderboard();
 }
 
@@ -528,12 +528,8 @@ async function endGame(won, isGiveUp = false) {
     // CRITICAL FIX: Pass the submittedId directly to the modal function
     showFunFactModal(currentScore, gameTimer, won, isGiveUp, currentFunFact, submittedId);
 
-    newGameBtn.classList.remove('hidden');
-    newGameBtn.classList.add('block');
     randomPuzzleBtn.classList.remove('hidden');
     randomPuzzleBtn.classList.add('block');
-    replayPuzzleBtn.classList.remove('hidden');
-    replayPuzzleBtn.classList.add('block');
     shareResultBtn.classList.remove('hidden');
     shareResultBtn.classList.add('block');
     giveUpBtn.classList.add('hidden');
@@ -565,7 +561,7 @@ async function saveScore(scoreData) {
         const minutes = Math.floor(gameTimer / 60);
         const seconds = gameTimer % 60;
         const formattedTime = `${minutes}:${String(seconds).padStart(2, '0')}`;
-        window.showMessage(`Score ${currentScore} (Time: ${formattedTime}) saved and leaderboard updated!`, 5000);
+        window.showMessage(`Score ${currentScore} (Time: ${formattedTime}) saved and leaderboard updated!`, 10);
 
         // This is the critical call to update the leaderboard on the main page
         loadLeaderboard(newSubmissionId);
@@ -938,14 +934,6 @@ howToPlayBtn.addEventListener('click', () => {
 // NEW CORRECTED CODE ENDS HERE
 // NEW CODE ENDS HERE
 // Event listener for New Game button
-newGameBtn.addEventListener('click', () => {
-    // Hide New Game button
-    newGameBtn.classList.add('hidden');
-    newGameBtn.classList.remove('block');
-
-    // Re-initialize the game (this will load today's puzzle again)
-    window.initializeGameApp();
-});
 // Event listener for Play Random Puzzle button (NEW CODE STARTS HERE)
 randomPuzzleBtn.addEventListener('click', () => {
     // Hide both end-game buttons
@@ -1077,27 +1065,9 @@ closeSolutionModalBtn.addEventListener('click', () => {
 });
 
 // CORRECTED: Event listener for the new 'Today's Puzzle' button
-playTodayPuzzleBtnModal.addEventListener('click', () => {
-    funFactModal.classList.add('hidden');
-    // This correctly reloads the daily puzzle by passing null
-    window.initializeGameApp(null);
-});
 
 // CORRECTED: Event listener for the renamed 'Replay' button (old functionality)
 // CORRECTED: Event listener for the renamed 'Replay' button (old functionality)
-replayPuzzleBtnModal.addEventListener('click', () => {
-    funFactModal.classList.add('hidden');
-    // Reload the game with the same puzzle that was just played
-    const currentPuzzleData = {
-        start_word: currentSeedWord,
-        target_word: currentTargetWord,
-        optimal_path_length: optimalPathLength,
-        optimal_path: window.currentOptimalPath,
-        difficulty: currentDifficulty,
-        fun_fact: currentFunFact // CRITICAL FIX: Pass the fun fact to the new puzzle object
-    };
-    window.initializeGameApp(currentPuzzleData);
-});
 
 playRandomPuzzleBtnModal.addEventListener('click', () => {
     funFactModal.classList.add('hidden');
@@ -1145,33 +1115,6 @@ playRandomPuzzleBtnModal.addEventListener('click', () => {
 });
 
 // Event listener for Play Same Puzzle Again button
-replayPuzzleBtn.addEventListener('click', () => {
-    // Hide all end-game buttons
-    newGameBtn.classList.add('hidden');
-    newGameBtn.classList.remove('block');
-    randomPuzzleBtn.classList.add('hidden');
-    randomPuzzleBtn.classList.remove('block');
-    replayPuzzleBtn.classList.add('hidden');
-    replayPuzzleBtn.classList.remove('block');
-    shareResultBtn.classList.add('hidden');
-    shareResultBtn.classList.remove('block');
-
-    // Re-initialize the game with the *same* puzzle that was just played
-    // CRITICAL FIX: The puzzle data must include the fun fact from the current game state.
-    const currentPuzzleData = {
-        start_word: currentSeedWord,
-        target_word: currentTargetWord,
-        optimal_path_length: optimalPathLength,
-        optimal_path: window.currentOptimalPath,
-        difficulty: currentDifficulty,
-        fun_fact: currentFunFact // Pass the fun fact from the global variable
-    };
-
-    console.log(`Replaying puzzle: ${currentSeedWord} to ${currentTargetWord}`);
-    window.showMessage(`Replaying: ${currentSeedWord} to ${currentTargetWord}!`, 5000);
-
-    window.initializeGameApp(currentPuzzleData);
-});
 
 // Event listener for Share Result button (NEW CODE STARTS HERE)
 shareResultBtn.addEventListener('click', async () => {

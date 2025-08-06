@@ -214,28 +214,30 @@
             <div class="flex flex-col space-y-4 w-full">
                 <button id="share-results-btn-modal"
                     class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300">
-                    Share Results
+                    🏆 Share Results 🏆
                 </button>
                 <button id="view-solution-btn-modal"
                     class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300">
-                    View Solution
-                </button>
-                <button id="play-today-puzzle-btn-modal"
-                    class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300">
-                    Today's Puzzle
+                    💡 View Solution 💡
                 </button>
                 <button id="replay-puzzle-btn-modal"
-                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300">
+                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300 hidden">
                     Play Same Puzzle Again
                 </button>
                 <button id="play-random-puzzle-btn-modal"
                     class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300">
-                    Play Random Puzzle
-                </button>
-                <button id="close-modal-btn" class="text-gray-500 hover:text-gray-700 font-bold mt-2">
-                    Close
+                    🧩 Practice Puzzles 🧩
                 </button>
             </div>
+            <div class="mt-4 flex justify-center w-full">
+                <button id="play-today-puzzle-btn-modal"
+                    class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300 hidden">
+                    Today's Puzzle
+                </button>
+            </div>
+            <button id="close-modal-btn" class="text-gray-500 hover:text-gray-700 font-bold mt-4">
+                Close
+            </button>
         </div>
     </div>
 
@@ -267,16 +269,19 @@
         </div>
 
         <div class="flex flex-col items-center justify-center space-y-4 mb-6">
-            <div class="flex flex-col items-center space-y-2">
-                <span class="text-lg text-gray-600">Seed Word:</span>
-                <span id="seed-word-display"
-                    class="text-4xl md:text-5xl font-extrabold text-blue-600 tracking-wider">----</span>
-            </div>
-            <div class="text-2xl text-gray-500 font-semibold">↓</div>
-            <div class="flex flex-col items-center space-y-2">
-                <span class="text-lg text-gray-600">Target Word:</span>
-                <span id="target-word-display"
-                    class="text-4xl md:text-5xl font-extrabold text-green-600 tracking-wider">----</span>
+            <div class="flex flex-row items-center space-x-4">
+                <div class="flex flex-col items-center space-y-2">
+                    <span class="text-lg text-gray-600">Start Word:</span>
+                    <span id="seed-word-display"
+                        class="text-4xl md:text-5xl font-extrabold text-blue-600 tracking-wider">----</span>
+                </div>
+                <div class="text-2xl text-gray-500 font-semibold mt-6">→</div>
+                <div class="text-2xl text-gray-500 font-semibold hidden">↓</div>
+                <div class="flex flex-col items-center space-y-2">
+                    <span class="text-lg text-gray-600">Target Word:</span>
+                    <span id="target-word-display"
+                        class="text-4xl md:text-5xl font-extrabold text-green-600 tracking-wider">----</span>
+                </div>
             </div>
             <div class="text-md text-gray-500 mt-2">Difficulty: <span id="difficulty-display"
                     class="font-semibold">N/A</span></div>
@@ -307,7 +312,7 @@
             </button>
             <button id="random-puzzle-btn"
                 class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-indigo-700 transition duration-200 transform hover:scale-105 hidden">
-                Play Random Puzzle
+                Practice Puzzles
             </button>
             <button id="replay-puzzle-btn"
                 class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-green-700 transition duration-200 transform hover:scale-105 hidden">
