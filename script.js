@@ -204,46 +204,21 @@ function isValidMorphStep(currentWord, nextWord) {
  * @param {object|null} puzzleOverride An optional puzzle object to use instead of fetching from Firebase.
  */
 async function initializeGame(puzzleOverride = null) {
-    // At the top of the initializeGame() function
     console.log("initializeGame() function started!");
 
-    // --- NEW LOGIC: Check for existing completion of today's puzzle ---
+    // --- Part 1: Determine which puzzle to load (daily or random) ---
+    let selectedPuzzleData;
     const today = new Date();
     const todayString = today.getFullYear() + '-' +
         String(today.getMonth() + 1).padStart(2, '0') + '-' +
         String(today.getDate()).padStart(2, '0');
     const completionRecord = localStorage.getItem('wordMorphDailyCompletion');
 
-
-    // --- END NEW LOGIC ---
-
-    // ... rest of the initializeGame() code follows here
-    // Hide Share Result button at the start of any new game
-    shareResultBtn.classList.add('hidden');
-    shareResultBtn.classList.remove('block');
-    // Hide end-game buttons at the start of any new game
-    newGameBtn.classList.add('hidden');
-    newGameBtn.classList.remove('block');
-    randomPuzzleBtn.classList.add('hidden');
-    randomPuzzleBtn.classList.remove('block');
-    // Hide replay button at the start of any new game
-    replayPuzzleBtn.classList.add('hidden');
-    replayPuzzleBtn.classList.remove('block');
-    // Show Give Up button
-    giveUpBtn.classList.remove('hidden');
-
-    // --- Determine Puzzle Source: Override or Firebase Daily Puzzle ---
-    let selectedPuzzleData;
-
-    if (puzzleOverride) { // If a puzzle object was passed directly (e.g., from "Play Random Puzzle" button)
+    if (puzzleOverride) {
         selectedPuzzleData = puzzleOverride;
+        dailyPuzzleId = "";
         console.log(`Using override puzzle: ${selectedPuzzleData.start_word} to ${selectedPuzzleData.target_word}`);
-    } else { // Otherwise, try to load today's puzzle from Firebase
-        const today = new Date();
-        const todayString = today.getFullYear() + '-' +
-            String(today.getMonth() + 1).padStart(2, '0') + '-' +
-            String(today.getDate()).padStart(2, '0');
-
+    } else {
         try {
             const dailyPuzzlesRef = collection(window.firestoreDb, `dailyPuzzles`);
             const q = query(dailyPuzzlesRef, where("__name__", "==", todayString));
@@ -252,10 +227,10 @@ async function initializeGame(puzzleOverride = null) {
             if (!querySnapshot.empty) {
                 selectedPuzzleData = querySnapshot.docs[0].data();
                 dailyPuzzleId = todayString;
-                console.log(`Successfully loaded puzzle for ${todayString}: ${selectedPuzzleData.start_word} to ${selectedPuzzleData.target_word}`);
+                console.log(`Successfully loaded daily puzzle for ${dailyPuzzleId}.`);
             } else {
                 console.warn(`No puzzle found for ${todayString}. Using default puzzle.`);
-                selectedPuzzleData = { // Default fallback puzzle
+                selectedPuzzleData = {
                     start_word: "READ",
                     target_word: "ROSE",
                     optimal_path_length: 6,
@@ -263,12 +238,13 @@ async function initializeGame(puzzleOverride = null) {
                     difficulty: "Hard",
                     fun_fact: "The word 'prickles' is the botanical term for what we commonly call rose thorns."
                 };
+                dailyPuzzleId = todayString;
                 window.showMessage(`No puzzle for ${todayString}. Using default READ to ROSE.`, 5000);
             }
         } catch (e) {
             console.error("Error loading daily puzzle from Firebase: ", e);
             window.showMessage("Error loading daily puzzle. Using default.", 5000);
-            selectedPuzzleData = { // Default fallback puzzle on error
+            selectedPuzzleData = {
                 start_word: "READ",
                 target_word: "ROSE",
                 optimal_path_length: 6,
@@ -276,26 +252,36 @@ async function initializeGame(puzzleOverride = null) {
                 difficulty: "Hard",
                 fun_fact: "The word 'prickles' is the botanical term for what we commonly call rose thorns."
             };
+            dailyPuzzleId = todayString;
         }
     }
-    // --- End Determine Puzzle Source ---
 
-    // --- Apply Selected Puzzle Data to Game State Variables ---
+    // --- Part 2: Apply puzzle data to game state and UI (ALWAYS run this part) ---
     currentSeedWord = selectedPuzzleData.start_word;
     currentTargetWord = selectedPuzzleData.target_word;
     currentDifficulty = selectedPuzzleData.difficulty;
     optimalPathLength = selectedPuzzleData.optimal_path_length;
-    window.currentOptimalPath = selectedPuzzleData.optimal_path; // Store the full optimal path
-    currentFunFact = selectedPuzzleData.fun_fact; // NEW: Store the fun fact
+    window.currentOptimalPath = selectedPuzzleData.optimal_path;
+    currentFunFact = selectedPuzzleData.fun_fact;
+
     seedWordDisplay.textContent = currentSeedWord;
     targetWordDisplay.textContent = currentTargetWord;
     difficultyDisplay.textContent = currentDifficulty;
-    userGuessInput.value = ''; // Clear input field
+    userGuessInput.value = '';
 
+    // Hide all buttons initially to prevent flicker
+    shareResultBtn.classList.add('hidden');
+    newGameBtn.classList.add('hidden');
+    randomPuzzleBtn.classList.add('hidden');
+    replayPuzzleBtn.classList.add('hidden');
+    giveUpBtn.classList.add('hidden');
+
+
+    // --- Part 3: Check for a completed puzzle and handle accordingly ---
     if (!puzzleOverride && completionRecord === todayString) {
-        console.log(`Puzzle for ${todayString} already completed. Cannot start a new game.`);
+        console.log(`Daily puzzle for ${todayString} already completed.`);
 
-        window.showMessage(`You've already solved today's puzzle! Come back tomorrow for a new one.`, 10000);
+        window.showMessage(`You've already played today's puzzle! Come back tomorrow for a new one.`, 10000);
 
         userGuessInput.disabled = true;
         submitGuessBtn.disabled = true;
@@ -303,9 +289,10 @@ async function initializeGame(puzzleOverride = null) {
         swapBtn.disabled = true;
         skipBtn.disabled = true;
 
-        // --- NEW LOGIC IS INSERTED HERE ---
+        // --- NEW, ROBUST LOGIC: Retrieve the latest user chain ---
         try {
             const scoresCollectionRef = collection(window.firestoreDb, `artifacts/${window.appId}/public/data/wordMorphScores`);
+            // Fetch all of the user's scores for this puzzle
             const q = query(
                 scoresCollectionRef,
                 where("puzzleId", "==", `${currentSeedWord}-${currentTargetWord}-${optimalPathLength}`),
@@ -314,11 +301,33 @@ async function initializeGame(puzzleOverride = null) {
             const querySnapshot = await getDocs(q);
 
             if (!querySnapshot.empty) {
-                const userScoreData = querySnapshot.docs[0].data();
-                currentChain = userScoreData.chain;
+                const userScores = querySnapshot.docs.map(doc => doc.data());
+                userScores.sort((a, b) => {
+                    const timestampA = a.timestamp && a.timestamp.toMillis ? a.timestamp.toMillis() : 0;
+                    const timestampB = b.timestamp && b.timestamp.toMillis ? b.timestamp.toMillis() : 0;
+                    return timestampB - timestampA;
+                });
+
+                const latestScoreData = userScores[0];
+
+                // --- NEW: Populate score and time from the retrieved data ---
+                currentChain = latestScoreData.chain;
+                currentScore = latestScoreData.score;
+                gameTimer = latestScoreData.time;
+
+                // --- NEW: Update UI displays with the restored data ---
+                updateScoreDisplay();
+                updateTimerDisplay();
+
             } else {
                 console.warn("User's score not found. Falling back to optimal path.");
                 currentChain = window.currentOptimalPath;
+                currentScore = 0; // Reset score/time if no record is found
+                gameTimer = 0;
+
+                // Update displays for the default state
+                updateScoreDisplay();
+                updateTimerDisplay();
             }
         } catch (e) {
             console.error("Error retrieving user's saved chain: ", e);
@@ -326,54 +335,47 @@ async function initializeGame(puzzleOverride = null) {
         }
         renderWordChain();
         loadLeaderboard();
-        // --- END OF NEW LOGIC ---
 
-        giveUpBtn.classList.add('hidden');
-        replayPuzzleBtn.classList.add('hidden');
-        randomPuzzleBtn.classList.remove('hidden');
+        // This section should be inside the 'if (!puzzleOverride && completionRecord === todayString)' block
+
+        giveUpBtn.classList.add('hidden'); // Hide the Give Up button as the game is over
+
+        randomPuzzleBtn.classList.remove('hidden'); // Show the "Practice Puzzles" button
         randomPuzzleBtn.classList.add('block');
+
+        shareResultBtn.classList.remove('hidden'); // Show the "Share Results" button
+        shareResultBtn.classList.add('block');
+
+        // The replay button should be hidden here. It is handled by the modal.
+        replayPuzzleBtn.classList.add('hidden');
+        replayPuzzleBtn.classList.remove('block');
 
         return;
     }
 
-    // --- Reset Game State for a New Round ---
-    currentChain = [currentSeedWord]; // Start chain with the seed word
-    currentScore = 0; // Reset score
-    gameTimer = 0; // Reset timer
-    clearInterval(timerInterval); // Clear any old timer
-    gameInProgress = true; // Set game active
+    // --- Part 4: If not completed, proceed with starting a new game ---
+    currentChain = [currentSeedWord];
+    currentScore = 0;
+    gameTimer = 0;
+    clearInterval(timerInterval);
+    gameInProgress = true;
 
-    // Reset power-up counts and track used ones for a new game
-    powerUpCounts = { // Reset AVAILABLE power-ups
-        hint: 0,
-        swap: 0,
-        skip: 0
-    };
-    powerUpsUsedThisGame = { // Reset *USED* power-ups
-        hint: 0,
-        swap: 0,
-        skip: 0
-    };
+    powerUpCounts = { hint: 2, swap: 0, skip: 0 };
+    powerUpsUsedThisGame = { hint: 0, swap: 0, skip: 0 };
 
-    // Give player initial hint for the day (or based on daily allowance)
-    powerUpCounts.hint = 2; // Give 2 hint to start
+    userGuessInput.disabled = false;
+    submitGuessBtn.disabled = false;
 
-    // --- Update UI Elements ---
-
-    userGuessInput.disabled = false; // Enable input
-    submitGuessBtn.disabled = false; // Enable submit button
-
-    renderWordChain(); // Display the seed word
+    renderWordChain();
     updateScoreDisplay();
-    updatePowerUpDisplays(); // Update power-up button states
-
-    // Start the game timer
+    updatePowerUpDisplays();
     startTimer();
 
-    // Show initial puzzle message (will use loaded words)
     window.showMessage(`Today's puzzle: ${currentSeedWord} to ${currentTargetWord}!`, 10);
     loadLeaderboard();
+    giveUpBtn.classList.remove('hidden');
 }
+
 
 // --- 6. Core Game Loop Functions ---
 
@@ -488,6 +490,14 @@ function updateScoreDisplay() {
 }
 
 /**
+ * Updates the timer display in the UI with the current game time.
+ */
+function updateTimerDisplay() {
+    const minutes = Math.floor(gameTimer / 60);
+    const seconds = gameTimer % 60;
+    timerDisplay.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+/**
  * Updates the power-up count displays and button enabled states.
  */
 function updatePowerUpDisplays() {
@@ -564,9 +574,6 @@ async function endGame(won, isGiveUp = false) {
     swapBtn.disabled = true;
     skipBtn.disabled = true;
 
-    // The player's chain is already stored in the global 'currentChain' variable.
-    // We do NOT need to query Firestore to retrieve it here.
-
     currentScore = calculateFinalScore(won, currentChain.length, gameTimer, powerUpsUsedThisGame, optimalPathLength);
 
     console.log("Game ended. Player chain:", currentChain);
@@ -574,30 +581,25 @@ async function endGame(won, isGiveUp = false) {
     console.log("Final Calculated Score:", currentScore);
 
     let submittedId = null;
-    if (won && window.firestoreDb && window.currentUserId) {
+    if (window.firestoreDb && window.currentUserId) {
         submittedId = await saveScore({
             userId: window.currentUserId,
             score: currentScore,
-            chain: currentChain, // This will now correctly save the player's path
+            chain: currentChain,
             time: gameTimer,
             puzzleId: `${currentSeedWord}-${currentTargetWord}-${optimalPathLength}`,
             date: new Date().toISOString(),
             difficulty: currentDifficulty,
             fun_fact: currentFunFact,
-            timestamp: new Date() // NEW: Add a timestamp for robust sorting
+            status: won ? 'completed' : 'gaveUp',
+            timestamp: new Date()
         });
+    }
 
-        // Save completion status to localStorage (no need for a nested if)
-        const today = new Date();
-        const todayString = today.getFullYear() + '-' +
-            String(today.getMonth() + 1).padStart(2, '0') + '-' +
-            String(today.getDate()).padStart(2, '0');
-
-        // This check ensures we only set the completion flag for the daily puzzle, not random ones.
-        if (dailyPuzzleId !== "") {
-            localStorage.setItem('wordMorphDailyCompletion', dailyPuzzleId);
-            console.log(`Saved daily puzzle completion for ${dailyPuzzleId} to localStorage.`);
-        }
+    // This logic now runs every time a game ends.
+    if (dailyPuzzleId !== "") {
+        localStorage.setItem('wordMorphDailyCompletion', dailyPuzzleId);
+        console.log(`Saved daily puzzle completion for ${dailyPuzzleId} to localStorage.`);
     }
 
     showFunFactModal(currentScore, gameTimer, won, isGiveUp, currentFunFact, submittedId);
@@ -630,6 +632,8 @@ async function saveScore(scoreData) {
             puzzleId: `${currentSeedWord}-${currentTargetWord}-${optimalPathLength}`,
             date: new Date().toISOString(),
             difficulty: currentDifficulty,
+            fun_fact: currentFunFact,
+            status: scoreData.status, // THIS IS THE NEW, CRITICAL LINE
             submissionId: newSubmissionId,
             timestamp: new Date()
         });
@@ -640,10 +644,7 @@ async function saveScore(scoreData) {
         const formattedTime = `${minutes}:${String(seconds).padStart(2, '0')}`;
         window.showMessage(`Score ${currentScore} (Time: ${formattedTime}) saved and leaderboard updated!`, 10);
 
-        // This is the critical call to update the leaderboard on the main page
         loadLeaderboard(newSubmissionId);
-
-        // We return the new ID so it can be used elsewhere, if needed.
         return newSubmissionId;
 
     } catch (e) {
@@ -661,22 +662,21 @@ async function saveScore(scoreData) {
  * This function uses the global `window.firestoreDb` and `window.appId`
  * which are set by the Firebase script in `index.html`.
  */
-async function loadLeaderboard(highlightSubmissionId = null) { // Added highlightSubmissionId parameter
-    if (!leaderboardList) { // Defensive check: ensure HTML element exists
+async function loadLeaderboard(highlightSubmissionId = null) {
+    if (!leaderboardList) {
         console.error("Leaderboard HTML element not found.");
         return;
     }
-    leaderboardList.innerHTML = '<li class="text-gray-600 italic text-center py-2">Loading scores...</li>'; // Show loading message
+    leaderboardList.innerHTML = '<li class="text-gray-600 italic text-center py-2">Loading scores...</li>';
 
     try {
-        // We trust the main DOMContentLoaded interval to ensure window.firestoreDb and window.appId are set.
-        // No need for a redundant internal check here, as it was causing timing issues.
         const scoresCollectionRef = collection(window.firestoreDb, `artifacts/${window.appId}/public/data/wordMorphScores`);
 
-        // Filter by current puzzleId
+        // Filter by current puzzleId and status 'completed'
         const q = query(
             scoresCollectionRef,
-            where("puzzleId", "==", `${currentSeedWord}-${currentTargetWord}-${optimalPathLength}`)
+            where("puzzleId", "==", `${currentSeedWord}-${currentTargetWord}-${optimalPathLength}`),
+            where("status", "==", "completed") // NEW: Only show completed scores
         );
 
         const querySnapshot = await getDocs(q);
@@ -688,55 +688,51 @@ async function loadLeaderboard(highlightSubmissionId = null) { // Added highligh
         // Sort scores in JavaScript (Score: descending, then Time: ascending)
         scores.sort((a, b) => {
             if (a.score === b.score) {
-                return a.time - b.time; // Shorter time is better for same score
+                return a.time - b.time;
             }
-            return b.score - a.score; // Higher score is better
+            return b.score - a.score;
         });
 
-        leaderboardList.innerHTML = ''; // Clear previous leaderboard content
+        leaderboardList.innerHTML = '';
         if (scores.length === 0) {
             const listItem = document.createElement('li');
             listItem.className = 'text-gray-600 italic text-center py-2';
             listItem.textContent = 'Play to see how you stack up on the Leaderboard!';
             leaderboardList.appendChild(listItem);
         } else {
-            scores.slice(0, 10).forEach((scoreData, index) => { // Display top 10 scores
+            scores.slice(0, 10).forEach((scoreData, index) => {
                 const listItem = document.createElement('li');
                 listItem.className = 'flex justify-between items-center py-1 border-b border-gray-200 last:border-b-0 px-2';
 
-                // Shorten userId for display
                 let displayUserId = scoreData.userId;
                 if (scoreData.userId && scoreData.userId.length > 8) {
                     displayUserId = scoreData.userId.substring(0, 8) + '...';
-                } else if (!scoreData.userId) { // Fallback for undefined userId
+                } else if (!scoreData.userId) {
                     displayUserId = 'Anonymous';
                 }
 
-                // Highlight current user's score
                 let displayName = displayUserId;
                 if (window.currentUserId && scoreData.userId === window.currentUserId) {
                     displayName = "You (" + displayUserId + ")";
-                    listItem.className += ' font-bold text-blue-700'; // Make current user's score bold/blue
+                    listItem.className += ' font-bold text-blue-700';
                 }
 
                 const minutes = Math.floor(scoreData.time / 60);
                 const seconds = scoreData.time % 60;
-                const timeFormatted = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                const timeFormatted = `${minutes}:${String(seconds).padStart(2, '0')}`;
 
-                // Apply a special highlight if this is the score just submitted
                 if (highlightSubmissionId && scoreData.submissionId === highlightSubmissionId) {
-                    listItem.className += ' bg-blue-100 border-blue-500 border-l-4'; // Add distinct highlight classes
+                    listItem.className += ' bg-blue-100 border-blue-500 border-l-4';
                 }
                 listItem.innerHTML = `
-                    <span class="w-1/4">${index + 1}.</span>
-                    <span class="w-1/2">${displayName}</span>
-                    <span class="w-1/4 text-right">${scoreData.score}</span>
-                    <span class="w-1/4 text-right">${timeFormatted}</span>
-                `;
+                    <span class="w-1/4">${index + 1}.</span>
+                    <span class="w-1/2">${displayName}</span>
+                    <span class="w-1/4 text-right">${scoreData.score}</span>
+                    <span class="w-1/4 text-right">${timeFormatted}</span>
+                `;
                 leaderboardList.appendChild(listItem);
             });
         }
-
     } catch (e) {
         console.error("Error loading leaderboard: ", e);
         leaderboardList.innerHTML = '<li class="text-red-500 text-center py-2">Error loading scores. Please check console for Firebase security rules or connection issues.</li>';
