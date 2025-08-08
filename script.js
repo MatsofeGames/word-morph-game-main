@@ -21,6 +21,7 @@ let inTutorialMode = false; // New flag to track if tutorial was opened mid-game
 let lastSubmissionId = null; // Stores the ID of the last submitted score for highlighting
 let currentFunFact = ""; // NEW: Stores the fun fact from the loaded puzzle
 let dailyPuzzleId = ""; // Stores a unique ID for the daily puzzle
+let countdownInterval = null;
 // --- Curated List of Random Puzzles (for "Play Random Puzzle" feature) ---
 // All puzzles are 4-letter words, with optimal path lengths of 2 or more.
 // Difficulty is based on optimal path length: Easy (2-3), Medium (4-5), Hard (6+)
@@ -268,6 +269,17 @@ async function initializeGame(puzzleOverride = null) {
     targetWordDisplay.textContent = currentTargetWord;
     difficultyDisplay.textContent = currentDifficulty;
     userGuessInput.value = '';
+    // Check if a daily puzzle was loaded by seeing if dailyPuzzleId has a value
+    const isDailyPuzzle = dailyPuzzleId !== "";
+    const leaderboardHeading = document.getElementById('leaderboard-heading');
+
+    if (leaderboardHeading) {
+        if (isDailyPuzzle) {
+            leaderboardHeading.textContent = "Today's Top Scores";
+        } else {
+            leaderboardHeading.textContent = "Top Scores for this Puzzle";
+        }
+    }
 
     // Hide all buttons initially to prevent flicker
     shareResultBtn.classList.add('hidden');
@@ -276,18 +288,24 @@ async function initializeGame(puzzleOverride = null) {
     replayPuzzleBtn.classList.add('hidden');
     giveUpBtn.classList.add('hidden');
 
+    // --- NEW: Hide timers on fresh game start ---
+    document.getElementById('new-puzzle-countdown').classList.add('hidden');
+    clearInterval(countdownInterval);
+
 
     // --- Part 3: Check for a completed puzzle and handle accordingly ---
     if (!puzzleOverride && completionRecord === todayString) {
         console.log(`Daily puzzle for ${todayString} already completed.`);
 
-        window.showMessage(`You've already played today's puzzle! Come back tomorrow for a new one.`, 10000);
+        window.showMessage(`You've already played today's puzzle! Come back tomorrow for a new one.`, 5000);
 
         userGuessInput.disabled = true;
         submitGuessBtn.disabled = true;
         hintBtn.disabled = true;
         swapBtn.disabled = true;
         skipBtn.disabled = true;
+
+        submitGuessBtn.classList.add('opacity-50');
 
         // --- NEW, ROBUST LOGIC: Retrieve the latest user chain ---
         try {
@@ -336,6 +354,11 @@ async function initializeGame(puzzleOverride = null) {
         renderWordChain();
         loadLeaderboard();
 
+        // --- NEW: Show timer for reloaded completed puzzle ---
+        document.getElementById('new-puzzle-countdown').classList.remove('hidden');
+        startNewPuzzleCountdown();
+        // --- END NEW ---
+
         // This section should be inside the 'if (!puzzleOverride && completionRecord === todayString)' block
 
         giveUpBtn.classList.add('hidden'); // Hide the Give Up button as the game is over
@@ -365,6 +388,9 @@ async function initializeGame(puzzleOverride = null) {
 
     userGuessInput.disabled = false;
     submitGuessBtn.disabled = false;
+
+    submitGuessBtn.classList.remove('opacity-50');
+    hintBtn.classList.remove('opacity-50');
 
     renderWordChain();
     updateScoreDisplay();
@@ -497,6 +523,40 @@ function updateTimerDisplay() {
     const seconds = gameTimer % 60;
     timerDisplay.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
+
+/**
+ * Starts a countdown timer until midnight and updates the UI.
+ */
+function startNewPuzzleCountdown() {
+    clearInterval(countdownInterval); // Clear any existing timer
+
+    function updateCountdown() {
+        const now = new Date();
+        const midnight = new Date(now);
+        midnight.setHours(24, 0, 0, 0);
+
+        const timeRemaining = midnight.getTime() - now.getTime();
+        const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+        const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+
+        const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+        document.getElementById('main-countdown-display').textContent = formattedTime;
+        document.getElementById('modal-countdown-display').textContent = formattedTime;
+
+        if (timeRemaining < 0) {
+            clearInterval(countdownInterval);
+            document.getElementById('main-countdown-display').textContent = "New puzzle is ready!";
+            document.getElementById('modal-countdown-display').textContent = "New puzzle is ready!";
+            // Optional: Reload the page to get the new puzzle
+            // window.location.reload();
+        }
+    }
+
+    updateCountdown(); // Run once immediately to avoid a 1-second delay
+    countdownInterval = setInterval(updateCountdown, 1000);
+}
 /**
  * Updates the power-up count displays and button enabled states.
  */
@@ -574,7 +634,13 @@ async function endGame(won, isGiveUp = false) {
     swapBtn.disabled = true;
     skipBtn.disabled = true;
 
+    submitGuessBtn.classList.add('opacity-50');
+    hintBtn.classList.add('opacity-50');
+
     currentScore = calculateFinalScore(won, currentChain.length, gameTimer, powerUpsUsedThisGame, optimalPathLength);
+    // Add these lines after the score is calculated
+    updateScoreDisplay();
+    updateTimerDisplay();
 
     console.log("Game ended. Player chain:", currentChain);
     console.log("Time taken:", gameTimer, "seconds.");
@@ -601,6 +667,15 @@ async function endGame(won, isGiveUp = false) {
         localStorage.setItem('wordMorphDailyCompletion', dailyPuzzleId);
         console.log(`Saved daily puzzle completion for ${dailyPuzzleId} to localStorage.`);
     }
+
+    // --- NEW: Show timer immediately after game ends ---
+    document.getElementById('new-puzzle-countdown').classList.remove('hidden');
+    document.getElementById('modal-countdown').classList.remove('hidden');
+    startNewPuzzleCountdown();
+    // --- END NEW ---
+
+    // Add this line just before the modal is shown
+    document.getElementById('modal-countdown').classList.remove('hidden');
 
     showFunFactModal(currentScore, gameTimer, won, isGiveUp, currentFunFact, submittedId);
 
@@ -675,8 +750,7 @@ async function loadLeaderboard(highlightSubmissionId = null) {
         // Filter by current puzzleId and status 'completed'
         const q = query(
             scoresCollectionRef,
-            where("puzzleId", "==", `${currentSeedWord}-${currentTargetWord}-${optimalPathLength}`),
-            where("status", "==", "completed") // NEW: Only show completed scores
+            where("puzzleId", "==", `${currentSeedWord}-${currentTargetWord}-${optimalPathLength}`)
         );
 
         const querySnapshot = await getDocs(q);
@@ -1191,14 +1265,7 @@ playRandomPuzzleBtnModal.addEventListener('click', () => {
 
 // Event listener for Share Result button (NEW CODE STARTS HERE)
 shareResultBtn.addEventListener('click', async () => {
-    const gameUrl = window.location.href; // Get the current game URL
-
-    // Construct the shareable message (UPDATED LOGIC)
-    let shareMessage = `Word Morph Daily Puzzle!\n`;
-    shareMessage += `Puzzle: ${currentSeedWord} to ${currentTargetWord}\n`; // Removed Length
-    shareMessage += `My Chain Length: ${currentChain.length - 1} Words\n`; // Subtract 1 for transitions
-    shareMessage += `My Score: ${currentScore} in ${Math.floor(gameTimer / 60)}:${String(gameTimer % 60).padStart(2, '0')} seconds!\n`;
-    shareMessage += `Can you beat it? Play here: ${gameUrl}`; // Removed My Chain
+    const shareMessage = generateShareMessage();
 
     // Attempt to use the Web Share API (native sharing dialog)
     if (navigator.share) {
@@ -1206,25 +1273,22 @@ shareResultBtn.addEventListener('click', async () => {
             await navigator.share({
                 title: 'Word Morph Daily Puzzle',
                 text: shareMessage,
-
             });
             console.log('Shared successfully!');
             window.showMessage('Shared successfully!', 3000);
         } catch (error) {
-            // User cancelled share, or unsupported share target
             if (error.name !== 'AbortError') {
                 console.error('Error sharing:', error);
                 window.showMessage('Failed to share. Trying to copy to clipboard.', 3000);
-                copyToClipboard(shareMessage); // Fallback to clipboard
+                copyToClipboard(shareMessage);
             } else {
                 window.showMessage('Sharing cancelled.', 2000);
             }
         }
     } else {
-        // Fallback for browsers that don't support Web Share API (e.g., most desktops)
         console.log('Web Share API not supported. Copying to clipboard.');
         window.showMessage('Web Share API not supported. Copied to clipboard!', 3000);
-        copyToClipboard(shareMessage); // Fallback to clipboard
+        copyToClipboard(shareMessage);
     }
 });
 
@@ -1240,9 +1304,9 @@ function generateShareMessage() {
     const formattedTime = `${minutes}:${String(seconds).padStart(2, '0')}`;
 
     let shareMessage = `I just solved today's Word Morph puzzle!\n`;
-    shareMessage += `Puzzle: ${currentSeedWord} to ${currentTargetWord}\n`;
     shareMessage += `My Chain Length: ${chainLength} words\n`;
-    shareMessage += `My Score: ${currentScore} in ${formattedTime}!\n\n`;
+    shareMessage += `My Score: ${currentScore}\n`;
+    shareMessage += `My Time: ${formattedTime}\n\n`;
     shareMessage += `Can you beat it? Play here: ${gameUrl}`;
 
     return shareMessage;

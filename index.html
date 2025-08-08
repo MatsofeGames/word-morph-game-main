@@ -211,6 +211,12 @@
                 <ul id="leaderboard-snippet-list" class="space-y-1">
                 </ul>
             </div>
+
+            <!-- Modal countdown timer (inside fun-fact-modal) -->
+            <div id="modal-countdown" class="text-center font-extrabold text-1xl text-red-600 mt-4 hidden">
+                New Daily Puzzle in: <span id="modal-countdown-display"></span>
+            </div>
+
             <div class="flex flex-col space-y-4 w-full">
                 <button id="share-results-btn-modal"
                     class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300">
@@ -266,6 +272,11 @@
                 class="bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg shadow-sm hover:bg-gray-300 transition duration-200 transform hover:scale-105 text-sm">
                 How to Play
             </button>
+        </div>
+
+        <!-- Main page countdown timer -->
+        <div id="new-puzzle-countdown" class="text-md md:text-base font-semibold text-center text-red-600 hidden">
+            New Daily Puzzle in: <span id="main-countdown-display"></span>
         </div>
 
         <div class="flex flex-col items-center justify-center space-y-4 mb-6">
@@ -348,7 +359,8 @@
         </div>
 
         <div class="bg-gray-50 p-6 rounded-lg shadow-md">
-            <h2 class="text-xl font-bold text-gray-800 mb-4 text-center">Today's Top Scores</h2>
+            <h2 class="text-xl font-bold text-gray-800 mb-4 text-center" id="leaderboard-heading">Today's Top Scores
+            </h2>
             <ul id="leaderboard-list" class="list-none p-0 space-y-2">
             </ul>
         </div>
